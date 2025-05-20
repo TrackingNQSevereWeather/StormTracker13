@@ -80,16 +80,6 @@
       z-index: 1000;
       font-size: 14px;
     }
-
-    .flashing {
-      animation: flash 1s infinite;
-    }
-
-    @keyframes flash {
-      0% { stroke: red; }
-      50% { stroke: yellow; }
-      100% { stroke: red; }
-    }
   </style>
 </head>
 <body>
@@ -210,37 +200,36 @@
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
           const eventType = alert.properties.event;
-          const headline = alert.properties.headline || "";
           let color = "orange";
-          let className = "";
 
-          if (eventType.includes("Tornado")) {
-            color = "red";
-            if (headline.toLowerCase().includes("confirmed")) {
-              className = "flashing";
-            }
-          } else if (eventType.includes("Severe Thunderstorm")) {
-            color = "yellow";
-          } else if (eventType.includes("Flood")) {
-            color = "green";
-          } else if (eventType.includes("Winter")) {
-            color = "purple";
-          } else if (eventType.includes("Special Weather Statement")) {
-            color = "blue";
-          }
+          if (eventType.includes("Tornado")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
+          else if (eventType.includes("Flood")) color = "green";
+          else if (eventType.includes("Winter")) color = "purple";
+          else if (eventType.includes("Special Weather Statement")) color = "blue";
 
           if (coords) {
-            const polygon = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
+            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
               color,
               fillOpacity: 0.3,
-              weight: 2,
-              className
-            }).bindPopup(`<b>${eventType}</b><br>${headline}`);
-            polygon.addTo(map);
+              weight: 2
+            }).bindPopup(`
+              <b>${eventType}</b><br>
+              <strong>Headline:</strong> ${alert.properties.headline || "N/A"}<br>
+              <strong>Severity:</strong> ${alert.properties.severity || "Unknown"}<br>
+              <strong>Urgency:</strong> ${alert.properties.urgency || "Unknown"}<br>
+              <strong>Certainty:</strong> ${alert.properties.certainty || "Unknown"}<br>
+              <strong>Effective:</strong> ${new Date(alert.properties.effective).toLocaleString()}<br>
+              <strong>Expires:</strong> ${new Date(alert.properties.expires).toLocaleString()}<br><br>
+              <strong>Details:</strong><br>
+              ${alert.properties.description || "No details available."}
+            `);
+            poly.addTo(map);
           }
         });
       });
   </script>
 </body>
 </html>
+
 
