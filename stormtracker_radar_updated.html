@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>StormTracker 13 TrackingNQSevereWeather Real Time Radar</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+    #windy {
+      width: 100%;
+      height: 100%;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      background: #0077be;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background: #005f94;
+    }
+    @media (min-width: 600px) {
+      #controls {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      button {
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button onclick="setOverlay('radar')">High-Res Reflectivity</button>
+    <button onclick="setOverlay('doppler')">Velocity</button>
+    <button onclick="setOverlay('wind')">Wind</button>
+    <button onclick="setRegion('usa')">USA</button>
+    <button onclick="setRegion('australia')">Australia</button>
+  </div>
+
+  <div id="windy"></div>
+
+  <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+  <script>
+    const options = {
+      key: 'EtkxaOhkZomn18gCqf3WgTxX6gi867Br',
+      lat: 39.5,
+      lon: -98.35,
+      zoom: 5,
+      overlay: 'radar',
+    };
+
+    let store, map;
+
+    windyInit(options, windyAPI => {
+      store = windyAPI.store;
+      map = windyAPI.map;
+    });
+
+    function setOverlay(type) {
+      if (store) {
+        store.set('overlay', type);
+      }
+    }
+
+    function setRegion(region) {
+      if (!map) return;
+      if (region === 'usa') {
+        map.setView([39.5, -98.35], 5);
+      } else if (region === 'australia') {
+        map.setView([-25.0, 135.0], 5);
+      }
+    }
+  </script>
+
+<script>
+  // Reflectivity color map (no greens)
+  const reflectivityColors = ['#0000FF', '#FFFF00', '#FF0000', '#FF00FF', '#FFFFFF'];
+
+  // Velocity color map
+  const velocityColors = ['#0000FF', '#999999', '#FFFF00', '#FF0000', '#FF00FF'];
+
+  // Example function to get color by reflectivity dBZ value
+  function getReflectivityColor(dBZ) {
+    if (dBZ < 15) return reflectivityColors[0];
+    if (dBZ < 30) return reflectivityColors[1];
+    if (dBZ < 45) return reflectivityColors[2];
+    if (dBZ < 60) return reflectivityColors[3];
+    return reflectivityColors[4];
+  }
+
+  // Example function to get color by velocity value
+  function getVelocityColor(value) {
+    if (value < -30) return velocityColors[0]; // Inbound
+    if (value < 5) return velocityColors[1];   // Neutral
+    if (value < 30) return velocityColors[2];  // Light Outbound
+    if (value < 50) return velocityColors[3];  // Strong Outbound
+    return velocityColors[4];                  // Very Strong
+  }
+</script>
+
+</body>
+</html>
