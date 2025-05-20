@@ -11,73 +11,96 @@
       margin: 0;
     }
 
-    #timestamp {
+    #controls {
       position: absolute;
-      top: 10px;
+      bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.6);
+      background: rgba(0, 0, 0, 0.6);
       color: white;
-      padding: 6px 12px;
-      border-radius: 8px;
+      padding: 10px 15px;
+      border-radius: 10px;
       font-family: sans-serif;
       z-index: 1000;
+      text-align: center;
+    }
+
+    #slider {
+      width: 300px;
     }
   </style>
 </head>
 <body>
-  <div id="timestamp">Loading radar...</div>
   <div id="map"></div>
+  <div id="controls">
+    <div id="timestamp">Radar loading...</div>
+    <input type="range" id="slider" min="0" max="0" value="0"/>
+  </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([39.5, -98.35], 5); // Center USA
+    const map = L.map('map').setView([39.5, -98.35], 5);
 
-    // Base map layer
+    // Base map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap contributors'
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18
     }).addTo(map);
 
-    const radarLayers = [];
-    let currentFrame = 0;
-    let animationInterval;
+    const slider = document.getElementById('slider');
     const timestampEl = document.getElementById('timestamp');
 
-    // Load RainViewer radar frames
-    fetch('https://api.rainviewer.com/public/weather-maps.json')
-      .then(res => res.json())
-      .then(data => {
-        const frames = data.radar.past.concat(data.radar.nowcast || []);
-        frames.forEach(frame => {
-          const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
-          const layer = L.tileLayer(tileUrl, {
-            opacity: 0.6
+    let radarLayers = [];
+    let frameTimes = [];
+    let currentLayer = null;
+
+    function loadRadar() {
+      // Remove any existing radar layers
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      radarLayers = [];
+      frameTimes = [];
+
+      fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(res => res.json())
+        .then(data => {
+          const frames = data.radar.past.concat(data.radar.nowcast || []);
+          frames.forEach(frame => {
+            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+            const layer = L.tileLayer(tileUrl, { opacity: 0.6 });
+            radarLayers.push(layer);
+            frameTimes.push(new Date(frame.time * 1000));
           });
-          radarLayers.push({ layer, time: frame.time });
+
+          slider.max = radarLayers.length - 1;
+          slider.value = radarLayers.length - 1;
+          showFrame(parseInt(slider.value));
         });
-
-        startAnimation();
-      });
-
-    function startAnimation() {
-      if (radarLayers.length === 0) return;
-
-      animationInterval = setInterval(() => {
-        if (radarLayers[currentFrame - 1]) {
-          map.removeLayer(radarLayers[currentFrame - 1].layer);
-        }
-
-        map.addLayer(radarLayers[currentFrame].layer);
-
-        const time = new Date(radarLayers[currentFrame].time * 1000);
-        timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
-
-        currentFrame = (currentFrame + 1) % radarLayers.length;
-      }, 600);
     }
 
-    // Load active NWS alerts
+    function showFrame(index) {
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      currentLayer = radarLayers[index];
+      currentLayer.addTo(map);
+
+      const time = frameTimes[index];
+      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
+    }
+
+    slider.addEventListener('input', () => {
+      showFrame(parseInt(slider.value));
+    });
+
+    // Load radar initially
+    loadRadar();
+
+    // Auto-refresh every 5 minutes
+    setInterval(loadRadar, 5 * 60 * 1000);
+
+    // NWS Alerts
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -106,5 +129,6 @@
   </script>
 </body>
 </html>
+
 
 
