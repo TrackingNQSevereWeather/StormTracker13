@@ -6,46 +6,10 @@
   <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
-    html, body {
+    html, body, #map {
       height: 100%;
       margin: 0;
       font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #header {
-      background: #222;
-      color: white;
-      padding: 10px 20px;
-      text-align: center;
-      font-size: 20px;
-    }
-
-    #container {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-
-    #sidebar {
-      width: 250px;
-      background: #333;
-      color: white;
-      padding: 15px;
-      box-sizing: border-box;
-      overflow-y: auto;
-    }
-
-    #main {
-      flex: 1;
-      position: relative;
-    }
-
-    #map {
-      height: 100%;
-      width: 100%;
-      position: absolute;
     }
 
     #controls {
@@ -82,10 +46,14 @@
     }
 
     #legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 10px;
       border-radius: 8px;
       font-size: 14px;
+      z-index: 1000;
     }
 
     #legend div {
@@ -101,63 +69,61 @@
     }
 
     #aiSummary {
-      margin-top: 20px;
+      position: absolute;
+      bottom: 100px;
+      right: 10px;
+      width: 250px;
       background: rgba(0,0,0,0.8);
       color: white;
       padding: 12px;
       border-radius: 10px;
+      z-index: 1000;
       font-size: 14px;
     }
 
     #warningPanel {
-      margin-top: 20px;
+      position: absolute;
+      top: 70px;
+      left: 10px;
+      width: 250px;
+      max-height: 300px;
+      overflow-y: auto;
       background: rgba(0,0,0,0.85);
       color: white;
       padding: 12px;
       border-radius: 10px;
+      z-index: 1000;
       font-size: 14px;
-    }
-
-    .flashing-border {
-      animation: flash 1s infinite;
-    }
-
-    @keyframes flash {
-      0% { border: 3px solid red; }
-      50% { border: 3px solid yellow; }
-      100% { border: 3px solid red; }
+      cursor: move;
     }
   </style>
 </head>
 <body>
-  <div id="header">StormTracker13 - TrackingNQSevereWeather Real Time Radar</div>
-  <div id="container">
-    <div id="sidebar">
-      <div id="legend">
-        <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
-        <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
-        <div><span class="color-box" style="background:green"></span> Flood Warning</div>
-        <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
-        <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
-      </div>
-      <div id="aiSummary">
-        <b>AI Weather Summary</b><br/>
-        Conditions are currently calm in most areas.<br/>
-        Watch for updates on severe weather alerts.
-      </div>
-      <div id="warningPanel">
-        <b>Warning Details</b>
-        <div id="warningContent">No warning selected.</div>
-      </div>
-    </div>
-    <div id="main">
-      <div id="map"></div>
-      <div id="controls">
-        <button id="playPause">▶️ Play</button>
-        <input type="range" id="slider" min="0" max="0" value="0"/>
-        <div id="timestamp">Loading radar...</div>
-      </div>
-    </div>
+  <div id="map"></div>
+
+  <div id="legend">
+    <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
+    <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
+    <div><span class="color-box" style="background:green"></span> Flood Warning</div>
+    <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
+    <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
+  </div>
+
+  <div id="aiSummary">
+    <b>AI Weather Summary</b><br/>
+    Conditions are currently calm in most areas.<br/>
+    Watch for updates on severe weather alerts.
+  </div>
+
+  <div id="warningPanel">
+    <b>Warning Details</b>
+    <div id="warningContent">No warning selected.</div>
+  </div>
+
+  <div id="controls">
+    <button id="playPause">▶️ Play</button>
+    <input type="range" id="slider" min="0" max="0" value="0"/>
+    <div id="timestamp">Loading radar...</div>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -198,6 +164,169 @@
           });
 
           slider.max = radarLayers.length - 1;
-          slider.value = radar
+          slider.value = radarLayers.length - 1;
+          currentIndex = radarLayers.length - 1;
+          showFrame(currentIndex);
+        });
+    }
 
+    function showFrame(index) {
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      currentLayer = radarLayers[index];
+      currentLayer.addTo(map);
 
+      const time = frameTimes[index];
+      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
+      slider.value = index;
+      currentIndex = index;
+    }
+
+    function playRadar() {
+      playInterval = setInterval(() => {
+        currentIndex = (currentIndex + 1) % radarLayers.length;
+        showFrame(currentIndex);
+      }, 600);
+    }
+
+    function pauseRadar() {
+      clearInterval(playInterval);
+      playInterval = null;
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+      if (playInterval) {
+        pauseRadar();
+        playPauseBtn.textContent = "▶️ Play";
+      } else {
+        playRadar();
+        playPauseBtn.textContent = "⏸️ Pause";
+      }
+    });
+
+    slider.addEventListener('input', () => {
+      pauseRadar();
+      playPauseBtn.textContent = "▶️ Play";
+      showFrame(parseInt(slider.value));
+    });
+
+    loadRadar();
+    setInterval(loadRadar, 5 * 60 * 1000);
+
+    // Alerts
+    fetch('https://api.weather.gov/alerts/active')
+      .then(response => response.json())
+      .then(data => {
+        data.features.forEach(alert => {
+          const coords = alert.geometry?.coordinates;
+          const eventType = alert.properties.event;
+          let color = "orange";
+
+          if (eventType.includes("Tornado")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
+          else if (eventType.includes("Flood")) color = "green";
+          else if (eventType.includes("Winter")) color = "purple";
+          else if (eventType.includes("Special Weather Statement")) color = "blue";
+
+          if (coords) {
+            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
+              color,
+              fillOpacity: 0.3,
+              weight: 2
+            }).addTo(map);
+
+            poly.on('click', () => {
+              const content = `
+                <b>${alert.properties.event}</b><br>
+                <b>Area:</b> ${alert.properties.areaDesc}<br>
+                <b>Effective:</b> ${new Date(alert.properties.effective).toLocaleString()}<br>
+                <b>Expires:</b> ${new Date(alert.properties.expires).toLocaleString()}<br>
+                <b>Instructions:</b> ${alert.properties.instruction || 'N/A'}<br>
+                <b>Description:</b> ${alert.properties.description || 'N/A'}
+              `;
+              document.getElementById('warningContent').innerHTML = content;
+            });
+          }
+        });
+      });
+
+    // Make warning panel draggable
+    const warningPanel = document.getElementById('warningPanel');
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    warningPanel.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      offsetX = e.clientX - warningPanel.offsetLeft;
+      offsetY = e.clientY - warningPanel.offsetTop;
+      warningPanel.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (isDragging) {
+        warningPanel.style.left = (e.clientX - offsetX) + 'px';
+        warningPanel.style.top = (e.clientY - offsetY) + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', function() {
+      isDragging = false;
+      warningPanel.style.cursor = 'move';
+    });
+
+    // AI Summary Auto Update
+    let lastAlertTimestamp = 0;
+
+    function updateAISummary() {
+      const summaries = [
+        "Conditions are currently calm in most areas.",
+        "Isolated thunderstorms may develop in the afternoon.",
+        "Expect gusty winds near active cells.",
+        "Monitoring for possible severe weather in central regions.",
+        "Radar indicates scattered light showers.",
+        "No severe threats at this time. Stay alert for updates."
+      ];
+      let baseSummary = summaries[Math.floor(Math.random() * summaries.length)];
+
+      fetch('https://api.weather.gov/alerts/active')
+        .then(res => res.json())
+        .then(data => {
+          let latestTimestamp = lastAlertTimestamp;
+          let newAlertFound = false;
+          let importantAlerts = [];
+
+          data.features.forEach(alert => {
+            const issuedTime = new Date(alert.properties.sent).getTime();
+            if (issuedTime > lastAlertTimestamp) {
+              newAlertFound = true;
+              importantAlerts.push(alert.properties.event);
+              if (issuedTime > latestTimestamp) {
+                latestTimestamp = issuedTime;
+              }
+            }
+          });
+
+          lastAlertTimestamp = latestTimestamp;
+
+          if (newAlertFound) {
+            const uniqueAlerts = [...new Set(importantAlerts)];
+            const alertList = uniqueAlerts.slice(0, 3).join(", ");
+            baseSummary += `<br><b>⚠️ New Alerts:</b> ${alertList}`;
+          }
+
+          document.getElementById("aiSummary").innerHTML =
+            "<b>AI Weather Summary</b><br/>" + baseSummary;
+        })
+        .catch(() => {
+          document.getElementById("aiSummary").innerHTML =
+            "<b>AI Weather Summary</b><br/>" + baseSummary;
+        });
+    }
+
+    updateAISummary();
+    setInterval(updateAISummary, 5 * 60 * 1000);
+  </script>
+</body>
+</html>
