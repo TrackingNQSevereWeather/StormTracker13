@@ -20,7 +20,7 @@
   <script>
     const map = L.map('map').setView([39.5, -98.35], 5); // Center USA
 
-    // Base layer
+    // Base map
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors'
@@ -49,17 +49,11 @@
     fetch('https://tilecache.rainviewer.com/api/maps.json')
       .then(res => res.json())
       .then(frames => {
-        radarFrames = frames.slice(-10); // last 10 frames
+        radarFrames = frames.slice(-10); // Last 10 frames
         startRadarAnimation();
       });
 
-    // 💨 Velocity Radar (IEM)
-    const velocityRadar = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0u-900913/{z}/{x}/{y}.png', {
-      opacity: 0.6,
-      attribution: 'Velocity Radar © Iowa State Univ. IEM'
-    });
-
-    // ⚡️ Lightning (example circle)
+    // ⚡️ Lightning (example only)
     const lightning = L.circle([38, -97], {
       radius: 50000,
       color: 'yellow',
@@ -98,10 +92,8 @@
       return "orange";
     }
 
-    // Layer controls
+    // Optional layers control
     const overlays = {
-      "Reflectivity Radar (Animated)": radarLayer,
-      "Velocity Radar (IEM)": velocityRadar,
       "Satellite (Static)": satellite,
       "Lightning (Example)": lightning
     };
@@ -109,4 +101,5 @@
   </script>
 </body>
 </html>
+
 
