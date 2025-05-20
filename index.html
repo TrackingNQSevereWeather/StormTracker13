@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StormTracker 13 - US Radar Dashboard</title>
+  <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     html, body, #map {
@@ -28,6 +28,19 @@
       gap: 12px;
     }
 
+    #dashboard {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      z-index: 999;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
     #slider {
       width: 300px;
     }
@@ -48,6 +61,13 @@
 </head>
 <body>
   <div id="map"></div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <strong>Weather Control Centre</strong><br>
+    ⏰ Time: <span id="clock">--:--:--</span><br>
+    🚨 Active Alerts: <span id="alertCount">Loading...</span>
+  </div>
 
   <div id="controls">
     <button id="playPause">▶️ Play</button>
@@ -143,23 +163,18 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // 🔴 NWS Alerts - Colored by warning type
+    // 🔶 NWS Alerts - Single Color
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
+        const alertCount = data.features.length;
+        document.getElementById("alertCount").textContent = alertCount;
+
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
           if (coords) {
-            let color = "orange"; // default
-            const event = alert.properties.event;
-
-            if (event.includes("Tornado Warning")) color = "#FF0000";
-            else if (event.includes("Severe Thunderstorm Warning")) color = "#FFA500";
-            else if (event.includes("Flash Flood Warning")) color = "#008000";
-            else if (event.includes("Flood Warning")) color = "#90EE90";
-
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: color,
+              color: "orange",
               fillOpacity: 0.3,
               weight: 2
             }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
@@ -167,7 +182,17 @@
           }
         });
       });
+
+    // 🕒 Live Clock
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString();
+      document.getElementById("clock").textContent = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
   </script>
 </body>
 </html>
+
 
