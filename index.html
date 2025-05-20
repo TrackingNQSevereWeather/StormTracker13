@@ -1,242 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-      font-family: sans-serif;
+    #map {
+      height: 100vh;
+      width: 100%;
     }
-
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      z-index: 999;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    #slider {
-      width: 300px;
-    }
-
-    #playPause {
-      background: #444;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #timestamp {
-      min-width: 200px;
-    }
-
-    #legend {
+    .legend {
       position: absolute;
       top: 10px;
       right: 10px;
-      background: rgba(255, 255, 255, 0.9);
+      background-color: white;
       padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
+      border-radius: 5px;
       z-index: 1000;
+      font-size: 14px;
     }
-
-    #legend div {
-      margin-bottom: 5px;
-    }
-
-    .color-box {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-right: 6px;
-      vertical-align: middle;
-    }
-
-    #aiSummary {
+    .ai-summary {
       position: absolute;
-      bottom: 100px;
+      bottom: 10px;
       right: 10px;
-      width: 250px;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      z-index: 1000;
+      background-color: #f8f9fa;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 10px;
+      max-width: 300px;
       font-size: 14px;
+      z-index: 1000;
+    }
+    .ai-button {
+      position: absolute;
+      bottom: 150px;
+      right: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .ai-button:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
 
-  <div id="legend">
-    <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
-    <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
-    <div><span class="color-box" style="background:green"></span> Flood Warning</div>
-    <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
-    <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
-  </div>
+<div id="map"></div>
 
-  <div id="aiSummary">
-    <b>AI Weather Summary</b><br/>
-    Conditions are currently calm in most areas.<br/>
-    Watch for updates on severe weather alerts.
-  </div>
+<div class="legend">
+  <strong>Legend</strong><br>
+  <span style="color:red;">■</span> Tornado Warning<br>
+  <span style="color:orange;">■</span> Severe Thunderstorm Warning<br>
+  <span style="color:yellow;">■</span> Special Weather Statement<br>
+</div>
 
-  <div id="controls">
-    <button id="playPause">▶️ Play</button>
-    <input type="range" id="slider" min="0" max="0" value="0"/>
-    <div id="timestamp">Loading radar...</div>
-  </div>
+<div class="ai-summary" id="ai-summary">
+  <strong>AI Summary:</strong> No active analysis.
+</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([39.5, -98.35], 5);
+<button class="ai-button" onclick="runAIRadarBot()">AI Radar Bot ➤</button>
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB',
-      maxZoom: 18
-    }).addTo(map);
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([-20.1, 146.3], 7); // Example center
 
-    const slider = document.getElementById('slider');
-    const timestampEl = document.getElementById('timestamp');
-    const playPauseBtn = document.getElementById('playPause');
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+  }).addTo(map);
 
-    let radarLayers = [];
-    let frameTimes = [];
-    let currentLayer = null;
-    let playInterval = null;
-    let currentIndex = 0;
-
-    function loadRadar() {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      radarLayers = [];
-      frameTimes = [];
-
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(res => res.json())
-        .then(data => {
-          const frames = data.radar.past.concat(data.radar.nowcast || []);
-          frames.forEach(frame => {
-            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
-            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
-            radarLayers.push(layer);
-            frameTimes.push(new Date(frame.time * 1000));
-          });
-
-          slider.max = radarLayers.length - 1;
-          slider.value = radarLayers.length - 1;
-          currentIndex = radarLayers.length - 1;
-          showFrame(currentIndex);
-        });
+  const warnings = [
+    {
+      type: 'Tornado',
+      coords: [[[-20.0, 146.0], [-20.0, 146.2], [-20.2, 146.2], [-20.2, 146.0]]],
+      color: 'red',
+      location: 'Charters Towers',
+      wind: '110 km/h',
+      hail: 'Golf-ball sized',
+      time: 'until 5:45 PM'
+    },
+    {
+      type: 'Severe Thunderstorm',
+      coords: [[[-20.4, 146.4], [-20.4, 146.6], [-20.6, 146.6], [-20.6, 146.4]]],
+      color: 'orange',
+      location: 'Ravenswood',
+      wind: '90 km/h',
+      hail: 'Large hail',
+      time: 'until 6:15 PM'
     }
+  ];
 
-    function showFrame(index) {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      currentLayer = radarLayers[index];
-      currentLayer.addTo(map);
+  warnings.forEach(w => {
+    const polygon = L.polygon(w.coords, { color: w.color }).addTo(map);
+    polygon.bindPopup(`${w.type} Warning<br>Location: ${w.location}<br>Wind: ${w.wind}<br>Hail: ${w.hail}<br>Time: ${w.time}`);
+    w.polygon = polygon;
+  });
 
-      const time = frameTimes[index];
-      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
-      slider.value = index;
-      currentIndex = index;
-    }
+  function runAIRadarBot() {
+    const center = map.getCenter();
+    let closest = null;
+    let minDist = Infinity;
 
-    function playRadar() {
-      playInterval = setInterval(() => {
-        currentIndex = (currentIndex + 1) % radarLayers.length;
-        showFrame(currentIndex);
-      }, 600);
-    }
-
-    function pauseRadar() {
-      clearInterval(playInterval);
-      playInterval = null;
-    }
-
-    playPauseBtn.addEventListener('click', () => {
-      if (playInterval) {
-        pauseRadar();
-        playPauseBtn.textContent = "▶️ Play";
-      } else {
-        playRadar();
-        playPauseBtn.textContent = "⏸️ Pause";
+    warnings.forEach(w => {
+      const latlng = L.latLngBounds(w.coords[0]).getCenter();
+      const dist = center.distanceTo(latlng);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = { ...w, center: latlng };
       }
     });
 
-    slider.addEventListener('input', () => {
-      pauseRadar();
-      playPauseBtn.textContent = "▶️ Play";
-      showFrame(parseInt(slider.value));
-    });
+    if (closest) {
+      map.setView(closest.center, 10);
+      document.getElementById('ai-summary').innerHTML = `
+        <strong>AI Summary:</strong><br>
+        ${closest.type} Warning for ${closest.location}.<br>
+        Wind: ${closest.wind}<br>
+        Hail: ${closest.hail}<br>
+        In effect ${closest.time}.
+      `;
+    }
+  }
+</script>
 
-    loadRadar();
-    setInterval(loadRadar, 5 * 60 * 1000);
-
-    // Alerts
-    fetch('https://api.weather.gov/alerts/active')
-      .then(response => response.json())
-      .then(data => {
-        data.features.forEach(alert => {
-          const coords = alert.geometry?.coordinates;
-          const eventType = alert.properties.event;
-          let color = "orange";
-
-          if (eventType.includes("Tornado")) color = "red";
-          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
-          else if (eventType.includes("Flood")) color = "green";
-          else if (eventType.includes("Winter")) color = "purple";
-          else if (eventType.includes("Special Weather Statement")) color = "blue";
-
-          if (coords) {
-            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color,
-              fillOpacity: 0.3,
-              weight: 2
-            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
-            poly.addTo(map);
-          }
-        });
-      });
-
-    // Storm Tracks (fake demo)
-    const stormTracks = [
-      { lat: 37.5, lon: -97.5, dir: 60, speed: 50 },
-      { lat: 38.0, lon: -96.8, dir: 45, speed: 40 },
-    ];
-
-    stormTracks.forEach(track => {
-      const length = track.speed * 1000; // fake km to m
-      const angle = track.dir * Math.PI / 180;
-      const lat2 = track.lat + (length / 111000) * Math.cos(angle);
-      const lon2 = track.lon + (length / (111000 * Math.cos(track.lat * Math.PI / 180))) * Math.sin(angle);
-      const line = L.polyline([[track.lat, track.lon], [lat2, lon2]], {
-        color: 'white',
-        dashArray: '6,6'
-      }).bindPopup(`Storm moving at ${track.speed} km/h`);
-      line.addTo(map);
-    });
-  </script>
 </body>
 </html>
+
 
