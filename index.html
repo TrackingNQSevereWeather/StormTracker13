@@ -83,33 +83,17 @@
 
     #warningPanel {
       position: absolute;
-      top: 80px;
-      right: 10px;
-      width: 280px;
-      max-height: 50%;
+      top: 70px;
+      left: 10px; /* Moved from right to left */
+      width: 250px;
+      max-height: 300px;
       overflow-y: auto;
-      background: rgba(255,255,255,0.95);
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 12px;
       border-radius: 10px;
-      padding: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      z-index: 1001;
+      z-index: 1000;
       font-size: 14px;
-    }
-
-    .warning-box {
-      border-left: 6px solid gray;
-      padding-left: 10px;
-      margin-bottom: 10px;
-    }
-    .warning-box.red { border-color: red; animation: flash 1s infinite; }
-    .warning-box.yellow { border-color: yellow; }
-    .warning-box.green { border-color: green; }
-    .warning-box.purple { border-color: purple; }
-    .warning-box.blue { border-color: blue; }
-
-    @keyframes flash {
-      0%, 100% { background-color: rgba(255,0,0,0.1); }
-      50% { background-color: rgba(255,0,0,0.4); }
     }
   </style>
 </head>
@@ -130,7 +114,10 @@
     Watch for updates on severe weather alerts.
   </div>
 
-  <div id="warningPanel"></div>
+  <div id="warningPanel">
+    <b>Warning Details</b><br/>
+    <div id="warningDetails">Click on a warning for more info.</div>
+  </div>
 
   <div id="controls">
     <button id="playPause">▶️ Play</button>
@@ -230,35 +217,35 @@
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
-        const warningPanel = document.getElementById('warningPanel');
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
           const eventType = alert.properties.event;
-          const headline = alert.properties.headline;
+          let color = "orange";
 
-          let colorClass = "gray";
-          if (eventType.includes("Tornado")) colorClass = "red";
-          else if (eventType.includes("Severe Thunderstorm")) colorClass = "yellow";
-          else if (eventType.includes("Flood")) colorClass = "green";
-          else if (eventType.includes("Winter")) colorClass = "purple";
-          else if (eventType.includes("Special Weather Statement")) colorClass = "blue";
+          if (eventType.includes("Tornado")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
+          else if (eventType.includes("Flood")) color = "green";
+          else if (eventType.includes("Winter")) color = "purple";
+          else if (eventType.includes("Special Weather Statement")) color = "blue";
 
           if (coords) {
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: colorClass,
+              color,
               fillOpacity: 0.3,
               weight: 2
-            });
-            poly.addTo(map);
+            }).addTo(map);
 
-            const box = document.createElement('div');
-            box.className = `warning-box ${colorClass}`;
-            box.innerHTML = `<b>${eventType}</b><br>${headline}`;
-            warningPanel.appendChild(box);
+            poly.on('click', () => {
+              document.getElementById('warningDetails').innerHTML = `
+                <b>${alert.properties.event}</b><br/>
+                <i>${alert.properties.headline}</i><br/><br/>
+                ${alert.properties.description}<br/><br/>
+                <b>Areas:</b> ${alert.properties.areaDesc}
+              `;
+            });
           }
         });
       });
   </script>
 </body>
 </html>
-
