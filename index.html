@@ -2,82 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StormTracker 13 TrackingNQSevereWeather Real Time Radar</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StormTracker 13 | TrackingNQSevereWeather Real-Time Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body, #map {
-      height: 100%;
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: sans-serif;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    .leaflet-control-layers {
+      background: white;
+      padding: 5px;
+      border-radius: 5px;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
   <script>
-    const map = L.map('map').setView([39.5, -98.35], 5); // Center on USA
+    const map = L.map('map').setView([39.5, -98.35], 5); // Center USA
 
-    // Base map
-    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap contributors'
+    // Base layer
+    const basemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Reflectivity Radar (Iowa State)
-    const radar = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png', {
-      opacity: 0.6,
-      attribution: 'Radar © Iowa State Univ. IEM'
+    // Radar Reflectivity (IEM NEXRAD)
+    const reflectivityLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::NCR/{z}/{x}/{y}.png', {
+      attribution: 'Radar imagery © Iowa State University',
+      opacity: 0.6
     }).addTo(map);
 
-    // ⚡️ Lightning overlay (optional — demo only, no live data)
-    const lightning = L.circle([38, -97], {
-      radius: 50000,
-      color: 'yellow',
-      fillColor: 'yellow',
-      fillOpacity: 0.7
-    }).bindPopup("⚡️ Lightning Strike Example");
+    // Warnings (NWS GeoJSON feed)
+    const warningColors = {
+      'TOR': 'red',
+      'SVR': 'orange',
+      'FFW': 'purple',
+      'SPE': 'blue'
+    };
 
-    // 🛰 Satellite (GOES — demo, static)
-    const satellite = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
-      attribution: "Esri World Imagery"
-    });
-
-    // 🌪 NWS Alerts (USA)
-    fetch('https://api.weather.gov/alerts/active')
-      .then(response => response.json())
-      .then(data => {
-        data.features.forEach(alert => {
-          const coords = alert.geometry?.coordinates;
-          if (coords) {
-            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: getAlertColor(alert.properties.event),
-              fillOpacity: 0.4
-            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
-            poly.addTo(map);
-          }
-        });
-      });
-
-    function getAlertColor(event) {
-      const e = event.toLowerCase();
-      if (e.includes("tornado")) return "red";
-      if (e.includes("thunderstorm")) return "blue";
-      if (e.includes("flood")) return "green";
-      if (e.includes("fire")) return "darkred";
-      if (e.includes("wind")) return "purple";
-      return "orange";
+    function getWarningColor(code) {
+      return warningColors[code] || 'yellow';
     }
 
-    // Add optional overlays
-    const overlays = {
-      "Reflectivity Radar": radar,
-      "Satellite (Static)": satellite,
-      "Lightning (Example)": lightning
+    let warningLayer;
+
+    function loadWarnings() {
+      if (warningLayer) map.removeLayer(warningLayer);
+
+      $.getJSON('https://api.weather.gov/alerts/active?status=actual&message_type=alert', data => {
+        warningLayer = L.geoJSON(data, {
+          style: feature => {
+            const code = feature.properties.event.split(' ')[0].toUpperCase().slice(0, 3);
+            return {
+              color: getWarningColor(code),
+              weight: 2,
+              fillOpacity: 0.25
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            const p = feature.properties;
+            layer.bindPopup(`<strong>${p.event}</strong><br>${p.headline || ''}`);
+            if (p.event.includes('Tornado Warning')) {
+              playAlertSound();
+            }
+          }
+        }).addTo(map);
+      });
+    }
+
+    function playAlertSound() {
+      const audio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+      audio.play().catch(e => console.log("Sound failed:", e));
+    }
+
+    // Refresh every 5 minutes
+    setInterval(() => {
+      reflectivityLayer.setUrl(reflectivityLayer._url); // Force refresh
+      loadWarnings();
+    }, 5 * 60 * 1000);
+
+    loadWarnings();
+
+    // Layer control
+    const layers = {
+      "Base Map": basemap,
+      "Radar Reflectivity": reflectivityLayer,
     };
-    L.control.layers(null, overlays).addTo(map);
+
+    const overlays = {
+      "Warnings": warningLayer
+    };
+
+    L.control.layers(layers, overlays).addTo(map);
   </script>
 </body>
 </html>
