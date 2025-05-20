@@ -1,229 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-      font-family: sans-serif;
-    }
-
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      z-index: 999;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    #slider {
-      width: 300px;
-    }
-
-    #playPause {
-      background: #444;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #timestamp {
-      min-width: 200px;
-    }
-
-    #legend {
+    #map { height: 100vh; }
+    .legend {
       position: absolute;
       top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
+      right: 10px;
+      background-color: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 1000;
+    }
+    .ai-summary {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
       padding: 10px;
       border-radius: 8px;
+      max-width: 300px;
+      font-family: Arial, sans-serif;
       font-size: 14px;
-      z-index: 999;
-      line-height: 1.6;
-    }
-
-    #ai-summary {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 14px;
-      max-width: 250px;
-      z-index: 999;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 1000;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div id="legend">
+  <div class="legend">
     <strong>Legend:</strong><br>
-    <span style="color: red;">■</span> Tornado Warning<br>
-    <span style="color: yellow;">■</span> Severe Thunderstorm Warning<br>
-    <span style="color: green;">■</span> Flood Warning<br>
-    <span style="color: purple;">■</span> Winter Weather<br>
-    <span style="color: blue;">■</span> Special Weather Statement
+    <span style="color:red;">■</span> Tornado Warning<br>
+    <span style="color:orange;">■</span> Severe Thunderstorm Warning<br>
+    <span style="color:yellow;">■</span> Flash Flood Warning<br>
   </div>
 
-  <div id="controls">
-    <button id="playPause">▶️ Play</button>
-    <input type="range" id="slider" min="0" max="0" value="0"/>
-    <div id="timestamp">Loading radar...</div>
+  <div class="ai-summary">
+    <strong>AI Weather Summary:</strong>
+    <div id="aiText">Analyzing latest radar and warnings...</div>
   </div>
 
-  <div id="ai-summary">
-    <strong>AI Weather Summary:</strong><br>
-    Scanning radar data...
-  </div>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([39.5, -98.35], 5);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB',
-      maxZoom: 18
+    const map = L.map('map').setView([37.8, -96], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
     }).addTo(map);
 
-    const slider = document.getElementById('slider');
-    const timestampEl = document.getElementById('timestamp');
-    const playPauseBtn = document.getElementById('playPause');
+    async function fetchAlerts() {
+      const res = await fetch("https://api.weather.gov/alerts/active");
+      const data = await res.json();
 
-    let radarLayers = [];
-    let frameTimes = [];
-    let currentLayer = null;
-    let playInterval = null;
-    let currentIndex = 0;
+      data.features.forEach(alert => {
+        const coords = alert.geometry?.coordinates;
+        const props = alert.properties;
 
-    function loadRadar() {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      radarLayers = [];
-      frameTimes = [];
-
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(res => res.json())
-        .then(data => {
-          const frames = data.radar.past.concat(data.radar.nowcast || []);
-          frames.forEach(frame => {
-            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
-            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
-            radarLayers.push(layer);
-            frameTimes.push(new Date(frame.time * 1000));
+        if (coords) {
+          const polygon = L.polygon(coords[0].map(c => [c[1], c[0]]), {
+            color: props.event.includes("Tornado") ? "red" :
+                   props.event.includes("Severe") ? "orange" :
+                   props.event.includes("Flood") ? "yellow" : "gray",
+            weight: 2,
+            fillOpacity: 0.4
           });
 
-          slider.max = radarLayers.length - 1;
-          slider.value = radarLayers.length - 1;
-          currentIndex = radarLayers.length - 1;
-          showFrame(currentIndex);
-        });
-    }
+          const popupHTML = `
+            <div style="font-family: sans-serif; width: 250px;">
+              <div style="background: black; color: white; padding: 6px; font-weight: bold; font-size: 16px;">
+                ${props.event.toUpperCase()}
+              </div>
+              <div style="background: orange; color: black; padding: 6px;">
+                <strong>WHERE:</strong> ${props.areaDesc}
+              </div>
+              <div style="background: #ff9900; color: black; padding: 6px;">
+                <strong>HAZARD:</strong> ${props.description?.match(/(Hail|Wind).*?[\.|\n]/i)?.[0] || "Not specified"}
+              </div>
+              <div style="background: #ff8000; color: black; padding: 6px;">
+                <strong>SOURCE:</strong> ${props.parameter?.source || "Not specified"}
+              </div>
+              <div style="background: #ff6600; color: black; padding: 6px;">
+                <strong>EXPIRES:</strong> ${new Date(props.expires).toLocaleTimeString()}
+              </div>
+            </div>
+          `;
 
-    function showFrame(index) {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      currentLayer = radarLayers[index];
-      currentLayer.addTo(map);
-
-      const time = frameTimes[index];
-      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
-      slider.value = index;
-      currentIndex = index;
-    }
-
-    function playRadar() {
-      playInterval = setInterval(() => {
-        currentIndex = (currentIndex + 1) % radarLayers.length;
-        showFrame(currentIndex);
-      }, 600);
-    }
-
-    function pauseRadar() {
-      clearInterval(playInterval);
-      playInterval = null;
-    }
-
-    playPauseBtn.addEventListener('click', () => {
-      if (playInterval) {
-        pauseRadar();
-        playPauseBtn.textContent = "▶️ Play";
-      } else {
-        playRadar();
-        playPauseBtn.textContent = "⏸️ Pause";
-      }
-    });
-
-    slider.addEventListener('input', () => {
-      pauseRadar();
-      playPauseBtn.textContent = "▶️ Play";
-      showFrame(parseInt(slider.value));
-    });
-
-    loadRadar();
-    setInterval(loadRadar, 5 * 60 * 1000);
-
-    // NWS Alerts with AI Summary Update
-    fetch('https://api.weather.gov/alerts/active')
-      .then(response => response.json())
-      .then(data => {
-        const aiSummary = document.getElementById("ai-summary");
-        let summary = "No severe weather detected at the moment.";
-        let activeWarnings = [];
-
-        data.features.forEach(alert => {
-          const coords = alert.geometry?.coordinates;
-          const eventType = alert.properties.event;
-          let color = "orange"; // default
-
-          if (eventType.includes("Tornado")) color = "red";
-          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
-          else if (eventType.includes("Flood")) color = "green";
-          else if (eventType.includes("Winter")) color = "purple";
-          else if (eventType.includes("Special Weather Statement")) color = "blue";
-
-          if (!activeWarnings.includes(eventType)) {
-            activeWarnings.push(eventType);
-          }
-
-          if (coords) {
-            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color,
-              fillOpacity: 0.3,
-              weight: 2
-            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
-            poly.addTo(map);
-          }
-        });
-
-        if (activeWarnings.length > 0) {
-          summary = "⚠️ Active Alerts Detected:<br>" + activeWarnings.map(w => `• ${w}`).join("<br>");
+          polygon.bindPopup(popupHTML);
+          polygon.addTo(map);
         }
-
-        aiSummary.innerHTML = `<strong>AI Weather Summary:</strong><br>${summary}`;
       });
+    }
+
+    fetchAlerts();
+
+    // Example dynamic summary (can be replaced with AI backend)
+    function updateAISummary() {
+      const now = new Date();
+      const summaryText = `Latest scan at ${now.toLocaleTimeString()} shows active warnings across multiple regions. Tornado risk is moderate in central US. Expect gusty winds and possible hail.`;
+      document.getElementById("aiText").textContent = summaryText;
+    }
+
+    updateAISummary();
+    setInterval(updateAISummary, 30000); // update every 30s
   </script>
 </body>
 </html>
+
 
 
