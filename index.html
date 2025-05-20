@@ -1,126 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>StormTracker 13 TrackingNQSevereWeather Real Time Radar</title>
+  <title>StormTracker 13 - Real Time Radar</title>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-    }
-
-    .button-bar {
+    html, body { margin: 0; height: 100%; }
+    #map { width: 100%; height: 100%; }
+    .leaflet-control-layers { background: white; padding: 6px; }
+    button {
       position: absolute;
       top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
+      left: 10px;
       z-index: 1000;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 6px 12px;
-      border-radius: 8px;
-      display: flex;
-      gap: 10px;
-      font-family: sans-serif;
-    }
-
-    .button-bar button {
-      padding: 5px 10px;
-      cursor: pointer;
-      border: 1px solid #888;
-      border-radius: 4px;
-      background-color: #f0f0f0;
-    }
-
-    .button-bar button.active {
-      background-color: #007bff;
-      color: white;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div class="button-bar">
-    <button id="toggleRadar" class="active">Radar ON</button>
-    <button id="toggleWarnings" class="active">Warnings ON</button>
-  </div>
-
   <div id="map"></div>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-ajax"></script>
-
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([39.5, -98.5], 5);
+    const map = L.map('map').setView([39.5, -98.35], 4);
 
-    // Base map
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data © OpenStreetMap contributors'
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 10,
+      attribution: ''
     }).addTo(map);
 
-    // Radar layer
-    const reflectivityLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::N0Q/{z}/{x}/{y}.png', {
-      attribution: 'Radar © IEM',
+    const radarLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::N0Q-900913/{z}/{x}/{y}.png', {
+      tileSize: 256,
+      opacity: 0.7
+    });
+
+    const warningLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/watch_warn-{z}/{x}/{y}.png', {
+      tileSize: 256,
       opacity: 0.6
-    }).addTo(map);
+    });
 
-    // Warning colors
-    const warningColors = {
-      'Tornado Warning': 'red',
-      'Severe Thunderstorm Warning': 'orange',
-      'Special Weather Statement': 'blue'
+    const layers = {
+      "Reflectivity Radar": radarLayer,
+      "Severe Weather Warnings": warningLayer
     };
 
-    function getColorByEvent(event) {
-      return warningColors[event] || 'yellow';
-    }
+    L.control.layers(null, layers).addTo(map);
+    radarLayer.addTo(map);
+    warningLayer.addTo(map);
 
-    // Warning layer
-    const warningsLayer = new L.GeoJSON.AJAX('https://mesonet.agron.iastate.edu/geojson/warnings.geojson', {
-      style: function (feature) {
-        return {
-          color: getColorByEvent(feature.properties.phenomena === "TO" ? "Tornado Warning" :
-                                  feature.properties.phenomena === "SV" ? "Severe Thunderstorm Warning" :
-                                  feature.properties.phenomena === "SVS" ? "Special Weather Statement" : "Other"),
-          weight: 2,
-          fillOpacity: 0.3
-        };
-      },
-      onEachFeature: function (feature, layer) {
-        const props = feature.properties;
-        layer.bindPopup(`<strong>${props.phenomena}</strong><br>${props.wfo}<br>Until: ${props.expire}`);
-      }
-    }).addTo(map);
-
-    // Refresh radar/warnings
     setInterval(() => {
-      reflectivityLayer.setUrl('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::N0Q/{z}/{x}/{y}.png?' + new Date().getTime());
-      warningsLayer.refresh();
-    }, 300000); // 5 minutes
-
-    // Toggle logic
-    document.getElementById('toggleRadar').addEventListener('click', function () {
-      if (map.hasLayer(reflectivityLayer)) {
-        map.removeLayer(reflectivityLayer);
-        this.classList.remove('active');
-        this.textContent = 'Radar OFF';
-      } else {
-        map.addLayer(reflectivityLayer);
-        this.classList.add('active');
-        this.textContent = 'Radar ON';
-      }
-    });
-
-    document.getElementById('toggleWarnings').addEventListener('click', function () {
-      if (map.hasLayer(warningsLayer)) {
-        map.removeLayer(warningsLayer);
-        this.classList.remove('active');
-        this.textContent = 'Warnings OFF';
-      } else {
-        map.addLayer(warningsLayer);
-        this.classList.add('active');
-        this.textContent = 'Warnings ON';
-      }
-    });
+      radarLayer.setUrl(radarLayer._url + '?_=' + new Date().getTime());
+      warningLayer.setUrl(warningLayer._url + '?_=' + new Date().getTime());
+    }, 300000);
   </script>
 </body>
 </html>
