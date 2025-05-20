@@ -96,6 +96,16 @@
       font-size: 14px;
       cursor: move;
     }
+
+    #copyWarning {
+      margin-top: 10px;
+      background-color: #333;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -118,6 +128,7 @@
   <div id="warningPanel">
     <b>Warning Details</b>
     <div id="warningContent">No warning selected.</div>
+    <button id="copyWarning">Copy</button>
   </div>
 
   <div id="controls">
@@ -276,57 +287,16 @@
       warningPanel.style.cursor = 'move';
     });
 
-    // AI Summary Auto Update
-    let lastAlertTimestamp = 0;
-
-    function updateAISummary() {
-      const summaries = [
-        "Conditions are currently calm in most areas.",
-        "Isolated thunderstorms may develop in the afternoon.",
-        "Expect gusty winds near active cells.",
-        "Monitoring for possible severe weather in central regions.",
-        "Radar indicates scattered light showers.",
-        "No severe threats at this time. Stay alert for updates."
-      ];
-      let baseSummary = summaries[Math.floor(Math.random() * summaries.length)];
-
-      fetch('https://api.weather.gov/alerts/active')
-        .then(res => res.json())
-        .then(data => {
-          let latestTimestamp = lastAlertTimestamp;
-          let newAlertFound = false;
-          let importantAlerts = [];
-
-          data.features.forEach(alert => {
-            const issuedTime = new Date(alert.properties.sent).getTime();
-            if (issuedTime > lastAlertTimestamp) {
-              newAlertFound = true;
-              importantAlerts.push(alert.properties.event);
-              if (issuedTime > latestTimestamp) {
-                latestTimestamp = issuedTime;
-              }
-            }
-          });
-
-          lastAlertTimestamp = latestTimestamp;
-
-          if (newAlertFound) {
-            const uniqueAlerts = [...new Set(importantAlerts)];
-            const alertList = uniqueAlerts.slice(0, 3).join(", ");
-            baseSummary += `<br><b>⚠️ New Alerts:</b> ${alertList}`;
-          }
-
-          document.getElementById("aiSummary").innerHTML =
-            "<b>AI Weather Summary</b><br/>" + baseSummary;
-        })
-        .catch(() => {
-          document.getElementById("aiSummary").innerHTML =
-            "<b>AI Weather Summary</b><br/>" + baseSummary;
-        });
-    }
-
-    updateAISummary();
-    setInterval(updateAISummary, 5 * 60 * 1000);
+    // Copy button logic
+    document.getElementById('copyWarning').addEventListener('click', function () {
+      const warningText = document.getElementById('warningContent').innerText;
+      navigator.clipboard.writeText(warningText).then(() => {
+        alert("Warning details copied to clipboard.");
+      }).catch(err => {
+        alert("Failed to copy warning: " + err);
+      });
+    });
   </script>
 </body>
 </html>
+
