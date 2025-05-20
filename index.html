@@ -218,6 +218,24 @@
           }
         });
       });
+
+    // Storm Tracks (fake demo)
+    const stormTracks = [
+      { lat: 37.5, lon: -97.5, dir: 60, speed: 50 },
+      { lat: 38.0, lon: -96.8, dir: 45, speed: 40 },
+    ];
+
+    stormTracks.forEach(track => {
+      const length = track.speed * 1000; // fake km to m
+      const angle = track.dir * Math.PI / 180;
+      const lat2 = track.lat + (length / 111000) * Math.cos(angle);
+      const lon2 = track.lon + (length / (111000 * Math.cos(track.lat * Math.PI / 180))) * Math.sin(angle);
+      const line = L.polyline([[track.lat, track.lon], [lat2, lon2]], {
+        color: 'white',
+        dashArray: '6,6'
+      }).bindPopup(`Storm moving at ${track.speed} km/h`);
+      line.addTo(map);
+    });
   </script>
 </body>
 </html>
