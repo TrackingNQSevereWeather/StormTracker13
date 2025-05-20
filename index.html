@@ -84,7 +84,7 @@
     #warningPanel {
       position: absolute;
       top: 70px;
-      left: 10px; /* Moved from right to left */
+      left: 10px;
       width: 250px;
       max-height: 300px;
       overflow-y: auto;
@@ -94,6 +94,7 @@
       border-radius: 10px;
       z-index: 1000;
       font-size: 14px;
+      cursor: move;
     }
   </style>
 </head>
@@ -115,8 +116,8 @@
   </div>
 
   <div id="warningPanel">
-    <b>Warning Details</b><br/>
-    <div id="warningDetails">Click on a warning for more info.</div>
+    <b>Warning Details</b>
+    <div id="warningContent">No warning selected.</div>
   </div>
 
   <div id="controls">
@@ -236,16 +237,44 @@
             }).addTo(map);
 
             poly.on('click', () => {
-              document.getElementById('warningDetails').innerHTML = `
-                <b>${alert.properties.event}</b><br/>
-                <i>${alert.properties.headline}</i><br/><br/>
-                ${alert.properties.description}<br/><br/>
-                <b>Areas:</b> ${alert.properties.areaDesc}
+              const content = `
+                <b>${alert.properties.event}</b><br>
+                <b>Area:</b> ${alert.properties.areaDesc}<br>
+                <b>Effective:</b> ${new Date(alert.properties.effective).toLocaleString()}<br>
+                <b>Expires:</b> ${new Date(alert.properties.expires).toLocaleString()}<br>
+                <b>Instructions:</b> ${alert.properties.instruction || 'N/A'}<br>
+                <b>Description:</b> ${alert.properties.description || 'N/A'}
               `;
+              document.getElementById('warningContent').innerHTML = content;
             });
           }
         });
       });
+
+    // Make warning panel draggable
+    const warningPanel = document.getElementById('warningPanel');
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    warningPanel.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      offsetX = e.clientX - warningPanel.offsetLeft;
+      offsetY = e.clientY - warningPanel.offsetTop;
+      warningPanel.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (isDragging) {
+        warningPanel.style.left = (e.clientX - offsetX) + 'px';
+        warningPanel.style.top = (e.clientY - offsetY) + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', function() {
+      isDragging = false;
+      warningPanel.style.cursor = 'move';
+    });
   </script>
 </body>
 </html>
