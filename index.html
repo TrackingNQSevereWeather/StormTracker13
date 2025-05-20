@@ -143,15 +143,23 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // 🔶 NWS Alerts - Single Color
+    // 🔴 NWS Alerts - Colored by warning type
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
           if (coords) {
+            let color = "orange"; // default
+            const event = alert.properties.event;
+
+            if (event.includes("Tornado Warning")) color = "#FF0000";
+            else if (event.includes("Severe Thunderstorm Warning")) color = "#FFA500";
+            else if (event.includes("Flash Flood Warning")) color = "#008000";
+            else if (event.includes("Flood Warning")) color = "#90EE90";
+
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: "orange",
+              color: color,
               fillOpacity: 0.3,
               weight: 2
             }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
@@ -162,5 +170,4 @@
   </script>
 </body>
 </html>
-
 
