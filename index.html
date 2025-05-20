@@ -144,6 +144,51 @@
     let currentLayer = null;
     let playInterval = null;
     let currentIndex = 0;
+    let stormCorePositions = [];
+
+    function detectStormCore(layer, callback) {
+      const tileUrl = layer._url.replace('{z}', map.getZoom())
+                                .replace('{x}', 0)
+                                .replace('{y}', 0);
+
+      fetch(tileUrl)
+        .then(res => res.blob())
+        .then(blob => createImageBitmap(blob))
+        .then(imageBitmap => {
+          const canvas = document.createElement('canvas');
+          canvas.width = imageBitmap.width;
+          canvas.height = imageBitmap.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(imageBitmap, 0, 0);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          let max = 0, maxIndex = 0;
+
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            const brightness = imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2];
+            if (brightness > max) {
+              max = brightness;
+              maxIndex = i;
+            }
+          }
+
+          const pixelX = (maxIndex / 4) % canvas.width;
+          const pixelY = Math.floor((maxIndex / 4) / canvas.width);
+
+          const tileSize = 512;
+          const tileBounds = map.getPixelBounds();
+          const tileX = Math.floor(tileBounds.min.x / tileSize);
+          const tileY = Math.floor(tileBounds.min.y / tileSize);
+          const zoom = map.getZoom();
+
+          const latLng = map.unproject([
+            (tileX * tileSize) + pixelX,
+            (tileY * tileSize) + pixelY
+          ], zoom);
+
+          callback(latLng);
+        });
+    }
 
     function loadRadar() {
       if (currentLayer) {
@@ -174,6 +219,7 @@
       if (currentLayer) {
         map.removeLayer(currentLayer);
       }
+
       currentLayer = radarLayers[index];
       currentLayer.addTo(map);
 
@@ -181,9 +227,32 @@
       timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
       slider.value = index;
       currentIndex = index;
+
+      detectStormCore(currentLayer, (latLng) => {
+        stormCorePositions.push(latLng);
+
+        L.circleMarker(latLng, {
+          radius: 6,
+          color: 'red',
+          fillColor: 'yellow',
+          fillOpacity: 0.8
+        }).addTo(map).bindTooltip("Storm Core", {permanent: false});
+
+        if (stormCorePositions.length > 1) {
+          const from = stormCorePositions[stormCorePositions.length - 2];
+          const to = stormCorePositions[stormCorePositions.length - 1];
+
+          L.polyline([from, to], {
+            color: 'lime',
+            weight: 2,
+            dashArray: '4'
+          }).addTo(map);
+        }
+      });
     }
 
     function playRadar() {
+      stormCorePositions = [];
       playInterval = setInterval(() => {
         currentIndex = (currentIndex + 1) % radarLayers.length;
         showFrame(currentIndex);
@@ -214,7 +283,6 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // Alerts
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -251,7 +319,6 @@
         });
       });
 
-    // Make warning panel draggable
     const warningPanel = document.getElementById('warningPanel');
     let isDragging = false;
     let offsetX = 0;
