@@ -47,64 +47,47 @@
 
     #legend {
       position: absolute;
-      top: 60px;
-      right: 20px;
-      background: rgba(255, 255, 255, 0.9);
+      bottom: 100px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
       padding: 10px;
-      border-radius: 8px;
-      z-index: 999;
-      font-size: 14px;
-    }
-
-    #legend h4 {
-      margin: 0 0 10px;
+      border-radius: 10px;
+      z-index: 9999;
     }
 
     #legend div {
+      display: flex;
+      align-items: center;
       margin-bottom: 5px;
     }
 
     #legend span {
       display: inline-block;
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 12px;
       margin-right: 8px;
-      vertical-align: middle;
-    }
-
-    #legendToggle {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 1000;
-      background: #333;
-      color: white;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-bottom: 10px;
+      border-radius: 2px;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <button id="legendToggle">Hide Legend</button>
-  <div id="legend">
-    <h4 style="margin-top:0;">Legend</h4>
-    <div><span style="background:red;"></span> Tornado Warning</div>
-    <div><span style="background:yellow;"></span> Thunderstorm Warning</div>
-    <div><span style="background:green;"></span> Flood Warning</div>
-    <div><span style="background:purple;"></span> Winter Weather</div>
-    <div><span style="background:blue;"></span> Special Weather Statement</div>
-    <div><span style="background:orange;"></span> Other Alerts</div>
-  </div>
-
   <div id="controls">
     <button id="playPause">▶️ Play</button>
     <input type="range" id="slider" min="0" max="0" value="0"/>
     <div id="timestamp">Loading radar...</div>
+  </div>
+
+  <div id="legend">
+    <div><span style="background:red"></span> Tornado Warning</div>
+    <div><span style="background:yellow"></span> Severe Thunderstorm Warning</div>
+    <div><span style="background:green"></span> Flood Warning</div>
+    <div><span style="background:purple"></span> Winter Weather Warning</div>
+    <div><span style="background:blue"></span> Special Weather Statement</div>
+    <div><span style="background:pink"></span> Tornado Watch</div>
+    <div><span style="background:orange"></span> Severe Thunderstorm Watch</div>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -195,23 +178,26 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
+    // 🔶 NWS Alerts - Multi-color
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
+          const eventType = alert.properties.event;
+          let color = "orange"; // default
+
+          if (eventType.includes("Tornado Warning")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm Warning")) color = "yellow";
+          else if (eventType.includes("Flood")) color = "green";
+          else if (eventType.includes("Winter")) color = "purple";
+          else if (eventType.includes("Special Weather Statement")) color = "blue";
+          else if (eventType.includes("Tornado Watch")) color = "pink";
+          else if (eventType.includes("Severe Thunderstorm Watch")) color = "orange";
+
           if (coords) {
-            let color = "orange";
-            const event = alert.properties.event.toLowerCase();
-
-            if (event.includes("tornado")) color = "red";
-            else if (event.includes("thunderstorm")) color = "yellow";
-            else if (event.includes("flood")) color = "green";
-            else if (event.includes("winter")) color = "purple";
-            else if (event.includes("special weather statement")) color = "blue";
-
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: color,
+              color,
               fillOpacity: 0.3,
               weight: 2
             }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
@@ -219,19 +205,6 @@
           }
         });
       });
-
-    const legend = document.getElementById("legend");
-    const legendToggle = document.getElementById("legendToggle");
-
-    legendToggle.addEventListener("click", () => {
-      if (legend.style.display === "none") {
-        legend.style.display = "block";
-        legendToggle.textContent = "Hide Legend";
-      } else {
-        legend.style.display = "none";
-        legendToggle.textContent = "Show Legend";
-      }
-    });
   </script>
 </body>
 </html>
