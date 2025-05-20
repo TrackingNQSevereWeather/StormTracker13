@@ -26,8 +26,8 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Reflectivity Radar (Iowa State)
-    const radar = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png', {
+    // ✅ FIXED Reflectivity Radar (Iowa State)
+    const radar = L.tileLayer('https://mesonet.agron.iastate.edu/tiles/nexrad-n0q/{z}/{x}/{y}.png', {
       opacity: 0.6,
       attribution: 'Radar © Iowa State Univ. IEM'
     }).addTo(map);
@@ -81,4 +81,3 @@
   </script>
 </body>
 </html>
-
