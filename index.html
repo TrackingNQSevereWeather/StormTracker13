@@ -45,28 +45,26 @@
       min-width: 200px;
     }
 
-    #legend {
+    #aiSummary {
       position: absolute;
-      bottom: 90px;
+      top: 10px;
       left: 10px;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       color: white;
-      padding: 10px;
-      border-radius: 8px;
-      z-index: 999;
+      padding: 10px 15px;
+      border-radius: 10px;
+      max-width: 300px;
+      font-size: 14px;
+      z-index: 1000;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div id="legend">
-    <strong>Legend</strong><br>
-    <div style="color: red;">⬤ Tornado Warning</div>
-    <div style="color: yellow;">⬤ Severe Thunderstorm Warning</div>
-    <div style="color: green;">⬤ Flood Warning</div>
-    <div style="color: purple;">⬤ Winter Weather</div>
-    <div style="color: blue;">⬤ Special Weather Statement</div>
+  <div id="aiSummary">
+    <b>AI Weather Summary:</b>
+    <div id="summaryText">Analyzing current radar data...</div>
   </div>
 
   <div id="controls">
@@ -130,6 +128,9 @@
       timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
       slider.value = index;
       currentIndex = index;
+
+      // Update AI summary
+      document.getElementById('summaryText').textContent = `Current radar showing activity as of ${time.toLocaleTimeString()}.`;
     }
 
     function playRadar() {
@@ -162,34 +163,7 @@
 
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
-
-    // 🔶 NWS Alerts - Multi-color
-    fetch('https://api.weather.gov/alerts/active')
-      .then(response => response.json())
-      .then(data => {
-        data.features.forEach(alert => {
-          const coords = alert.geometry?.coordinates;
-          const eventType = alert.properties.event;
-          let color = "orange"; // default
-
-          if (eventType.includes("Tornado Warning")) color = "red";
-          else if (eventType.includes("Severe Thunderstorm Warning")) color = "yellow";
-          else if (eventType.includes("Flood")) color = "green";
-          else if (eventType.includes("Winter")) color = "purple";
-          else if (eventType.includes("Special Weather Statement")) color = "blue";
-
-          if (coords) {
-            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color,
-              fillOpacity: 0.3,
-              weight: 2
-            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
-            poly.addTo(map);
-          }
-        });
-      });
   </script>
 </body>
 </html>
-
 
