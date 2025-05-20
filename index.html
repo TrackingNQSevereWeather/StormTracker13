@@ -45,67 +45,54 @@
       min-width: 200px;
     }
 
+    #legend {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 999;
+      line-height: 1.6;
+    }
+
     #ai-summary {
       position: absolute;
       bottom: 20px;
       right: 20px;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 10px 15px;
-      border-radius: 8px;
-      z-index: 1000;
-      font-size: 14px;
-      max-width: 250px;
-    }
-
-    #legend {
-      position: absolute;
-      top: 20px;
-      right: 20px;
       background: rgba(0, 0, 0, 0.7);
       color: white;
-      padding: 10px 15px;
-      border-radius: 8px;
+      padding: 12px;
+      border-radius: 10px;
       font-size: 14px;
-      z-index: 1000;
-    }
-
-    .legend-item {
-      margin-bottom: 5px;
-      display: flex;
-      align-items: center;
-    }
-
-    .legend-color {
-      width: 18px;
-      height: 18px;
-      margin-right: 8px;
-      border-radius: 3px;
+      max-width: 250px;
+      z-index: 999;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div id="ai-summary">
-    <strong>AI Weather Summary:</strong><br>
-    Scanning radar data...<br>
-    Thunderstorm activity possible in some areas.
-  </div>
-
   <div id="legend">
-    <strong>Legend</strong><br>
-    <div class="legend-item"><div class="legend-color" style="background:red;"></div> Tornado Warning</div>
-    <div class="legend-item"><div class="legend-color" style="background:yellow;"></div> Severe Thunderstorm Warning</div>
-    <div class="legend-item"><div class="legend-color" style="background:green;"></div> Flood Warning</div>
-    <div class="legend-item"><div class="legend-color" style="background:purple;"></div> Winter Weather</div>
-    <div class="legend-item"><div class="legend-color" style="background:blue;"></div> Special Weather Statement</div>
+    <strong>Legend:</strong><br>
+    <span style="color: red;">■</span> Tornado Warning<br>
+    <span style="color: yellow;">■</span> Severe Thunderstorm Warning<br>
+    <span style="color: green;">■</span> Flood Warning<br>
+    <span style="color: purple;">■</span> Winter Weather<br>
+    <span style="color: blue;">■</span> Special Weather Statement
   </div>
 
   <div id="controls">
     <button id="playPause">▶️ Play</button>
     <input type="range" id="slider" min="0" max="0" value="0"/>
     <div id="timestamp">Loading radar...</div>
+  </div>
+
+  <div id="ai-summary">
+    <strong>AI Weather Summary:</strong><br>
+    Scanning radar data...
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -196,10 +183,14 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // NWS Alerts - Full Warning Color System
+    // NWS Alerts with AI Summary Update
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
+        const aiSummary = document.getElementById("ai-summary");
+        let summary = "No severe weather detected at the moment.";
+        let activeWarnings = [];
+
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
           const eventType = alert.properties.event;
@@ -211,6 +202,10 @@
           else if (eventType.includes("Winter")) color = "purple";
           else if (eventType.includes("Special Weather Statement")) color = "blue";
 
+          if (!activeWarnings.includes(eventType)) {
+            activeWarnings.push(eventType);
+          }
+
           if (coords) {
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
               color,
@@ -220,8 +215,15 @@
             poly.addTo(map);
           }
         });
+
+        if (activeWarnings.length > 0) {
+          summary = "⚠️ Active Alerts Detected:<br>" + activeWarnings.map(w => `• ${w}`).join("<br>");
+        }
+
+        aiSummary.innerHTML = `<strong>AI Weather Summary:</strong><br>${summary}`;
       });
   </script>
 </body>
 </html>
+
 
