@@ -1,108 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather Radar</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        #legend {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        .legend-item {
-            margin-bottom: 5px;
-        }
-        .legend-color {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            margin-right: 5px;
-        }
-        #ai-summary {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            max-width: 300px;
-            font-size: 14px;
-        }
-        #warning-box {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: #ff9900;
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            display: none;
-        }
-        #storm-attributes {
-            position: absolute;
-            bottom: 100px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 14px;
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      font-family: sans-serif;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      z-index: 999;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #slider {
+      width: 300px;
+    }
+
+    #playPause {
+      background: #444;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #timestamp {
+      min-width: 200px;
+    }
+
+    #legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 1000;
+    }
+
+    #legend div {
+      margin-bottom: 5px;
+    }
+
+    .color-box {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    #aiSummary {
+      position: absolute;
+      bottom: 100px;
+      right: 10px;
+      width: 250px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 12px;
+      border-radius: 10px;
+      z-index: 1000;
+      font-size: 14px;
+    }
+
+    #stormAttributes {
+      position: absolute;
+      bottom: 100px;
+      left: 10px;
+      width: 260px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 12px;
+      border-radius: 10px;
+      z-index: 1000;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <iframe src="https://www.rainviewer.com/map.html" style="width:100%; height:100%; border:none;"></iframe>
+  <div id="map"></div>
 
-    <div id="legend">
-        <div class="legend-item"><span class="legend-color" style="background:red"></span> Tornado Warning</div>
-        <div class="legend-item"><span class="legend-color" style="background:orange"></span> Severe Thunderstorm Warning</div>
-        <div class="legend-item"><span class="legend-color" style="background:yellow"></span> Flash Flood Warning</div>
-    </div>
+  <div id="legend">
+    <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
+    <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
+    <div><span class="color-box" style="background:green"></span> Flood Warning</div>
+    <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
+    <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
+  </div>
 
-    <div id="ai-summary">
-        <strong>AI Weather Summary:</strong>
-        <div id="summary-text">Loading current conditions...</div>
-    </div>
+  <div id="aiSummary">
+    <b>AI Weather Summary</b><br/>
+    Conditions are currently calm in most areas.<br/>
+    Watch for updates on severe weather alerts.
+  </div>
 
-    <div id="warning-box">
-        <strong>Severe Thunderstorm Warning</strong><br>
-        <strong>Where:</strong> Arkansas<br>
-        <strong>Hazard:</strong> 60 mph wind gusts<br>
-        <strong>Source:</strong> Radar Indicated<br>
-        <strong>Expires:</strong> 4 minutes from now
-    </div>
+  <div id="stormAttributes">
+    <b>Storm Attribute Tracker</b><br/>
+    Hail: 1.25"<br/>
+    Wind: 60 MPH<br/>
+    Moving: NE at 35 MPH<br/>
+    Counties: Example County, Another County
+  </div>
 
-    <div id="storm-attributes">
-        <strong>Storm Attributes</strong><br>
-        <strong>Hail Size:</strong> 1.25 inches<br>
-        <strong>Wind Gusts:</strong> 60 mph<br>
-        <strong>Location:</strong> Near Dallas, TX
-    </div>
+  <div id="controls">
+    <button id="playPause">▶️ Play</button>
+    <input type="range" id="slider" min="0" max="0" value="0"/>
+    <div id="timestamp">Loading radar...</div>
+  </div>
 
-    <script>
-        // Mock function to simulate loading AI summary
-        document.getElementById('summary-text').innerText = 'Scattered thunderstorms with strong wind gusts and hail expected through the evening.';
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([39.5, -98.35], 5);
 
-        // Simulate storm attribute panel display
-        setTimeout(() => {
-            document.getElementById('storm-attributes').style.display = 'block';
-        }, 2000);
-    </script>
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap & CartoDB',
+      maxZoom: 18
+    }).addTo(map);
+
+    const slider = document.getElementById('slider');
+    const timestampEl = document.getElementById('timestamp');
+    const playPauseBtn = document.getElementById('playPause');
+
+    let radarLayers = [];
+    let frameTimes = [];
+    let currentLayer = null;
+    let playInterval = null;
+    let currentIndex = 0;
+
+    function loadRadar() {
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      radarLayers = [];
+      frameTimes = [];
+
+      fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(res => res.json())
+        .then(data => {
+          const frames = data.radar.past.concat(data.radar.nowcast || []);
+          frames.forEach(frame => {
+            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
+            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
+            radarLayers.push(layer);
+            frameTimes.push(new Date(frame.time * 1000));
+          });
+
+          slider.max = radarLayers.length - 1;
+          slider.value = radarLayers.length - 1;
+          currentIndex = radarLayers.length - 1;
+          showFrame(currentIndex);
+        });
+    }
+
+    function showFrame(index) {
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      currentLayer = radarLayers[index];
+      currentLayer.addTo(map);
+
+      const time = frameTimes[index];
+      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
+      slider.value = index;
+      currentIndex = index;
+    }
+
+    function playRadar() {
+      playInterval = setInterval(() => {
+        currentIndex = (currentIndex + 1) % radarLayers.length;
+        showFrame(currentIndex);
+      }, 600);
+    }
+
+    function pauseRadar() {
+      clearInterval(playInterval);
+      playInterval = null;
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+      if (playInterval) {
+        pauseRadar();
+        playPauseBtn.textContent = "▶️ Play";
+      } else {
+        playRadar();
+        playPauseBtn.textContent = "⏸️ Pause";
+      }
+    });
+
+    slider.addEventListener('input', () => {
+      pauseRadar();
+      playPauseBtn.textContent = "▶️ Play";
+      showFrame(parseInt(slider.value));
+    });
+
+    loadRadar();
+    setInterval(loadRadar, 5 * 60 * 1000);
+
+    // Alerts
+    fetch('https://api.weather.gov/alerts/active')
+      .then(response => response.json())
+      .then(data => {
+        data.features.forEach(alert => {
+          const coords = alert.geometry?.coordinates;
+          const eventType = alert.properties.event;
+          let color = "orange";
+
+          if (eventType.includes("Tornado")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
+          else if (eventType.includes("Flood")) color = "green";
+          else if (eventType.includes("Winter")) color = "purple";
+          else if (eventType.includes("Special Weather Statement")) color = "blue";
+
+          if (coords) {
+            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
+              color,
+              fillOpacity: 0.3,
+              weight: 2
+            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
+            poly.addTo(map);
+          }
+        });
+      });
+  </script>
 </body>
 </html>
+
