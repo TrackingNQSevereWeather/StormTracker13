@@ -6,26 +6,80 @@
   <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
-    html, body, #map {
+    html, body {
       height: 100%;
       margin: 0;
       font-family: sans-serif;
+      background-color: #f0f2f5;
+    }
+
+    #map {
+      position: absolute;
+      top: 60px;
+      left: 300px;
+      right: 0;
+      bottom: 80px;
+      z-index: 1;
+    }
+
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background-color: #1e1e2f;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 1001;
+    }
+
+    #sidebar {
+      position: absolute;
+      top: 60px;
+      left: 0;
+      width: 300px;
+      bottom: 0;
+      background: #252537;
+      color: white;
+      padding: 15px;
+      z-index: 1001;
+      overflow-y: auto;
+    }
+
+    #aiSummary {
+      background: rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    #warningPanel {
+      background: rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
     }
 
     #controls {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
+      bottom: 0;
+      left: 300px;
+      right: 0;
+      height: 80px;
+      background: #1e1e2f;
       color: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      z-index: 999;
-      text-align: center;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 12px;
+      z-index: 1001;
+      padding: 10px 20px;
     }
 
     #slider {
@@ -41,13 +95,9 @@
       cursor: pointer;
     }
 
-    #timestamp {
-      min-width: 200px;
-    }
-
     #legend {
       position: absolute;
-      top: 10px;
+      top: 70px;
       right: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 10px;
@@ -68,268 +118,31 @@
       vertical-align: middle;
     }
 
-    #aiSummary {
-      position: absolute;
-      bottom: 100px;
-      right: 10px;
-      width: 250px;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      z-index: 1000;
-      font-size: 14px;
+    .flashing-border {
+      animation: flash-border 1s infinite alternate;
     }
 
-    #warningPanel {
-      position: absolute;
-      top: 70px;
-      left: 10px;
-      width: 250px;
-      max-height: 300px;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.85);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      z-index: 1000;
-      font-size: 14px;
-      cursor: move;
+    @keyframes flash-border {
+      from { border: 3px solid red; }
+      to { border: 3px solid yellow; }
     }
   </style>
 </head>
 <body>
+  <header>🌩️ StormTracker13 | TrackingNQSevereWeather Real-Time Radar</header>
+
+  <div id="sidebar">
+    <div id="aiSummary">
+      <b>AI Weather Summary</b><br/>
+      Conditions are currently calm in most areas.<br/>
+      Watch for updates on severe weather alerts.
+    </div>
+    <div id="warningPanel">
+      <b>Warning Details</b>
+      <div id="warningContent">No warning selected.</div>
+    </div>
+  </div>
+
   <div id="map"></div>
-
-  <div id="legend">
-    <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
-    <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
-    <div><span class="color-box" style="background:green"></span> Flood Warning</div>
-    <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
-    <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
-  </div>
-
-  <div id="aiSummary">
-    <b>AI Weather Summary</b><br/>
-    Conditions are currently calm in most areas.<br/>
-    Watch for updates on severe weather alerts.
-  </div>
-
-  <div id="warningPanel">
-    <b>Warning Details</b>
-    <div id="warningContent">No warning selected.</div>
-  </div>
-
-  <div id="controls">
-    <button id="playPause">▶️ Play</button>
-    <input type="range" id="slider" min="0" max="0" value="0"/>
-    <div id="timestamp">Loading radar...</div>
-  </div>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([39.5, -98.35], 5);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB',
-      maxZoom: 18
-    }).addTo(map);
-
-    const slider = document.getElementById('slider');
-    const timestampEl = document.getElementById('timestamp');
-    const playPauseBtn = document.getElementById('playPause');
-
-    let radarLayers = [];
-    let frameTimes = [];
-    let currentLayer = null;
-    let playInterval = null;
-    let currentIndex = 0;
-
-    function loadRadar() {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      radarLayers = [];
-      frameTimes = [];
-
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(res => res.json())
-        .then(data => {
-          const frames = data.radar.past.concat(data.radar.nowcast || []);
-          frames.forEach(frame => {
-            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
-            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
-            radarLayers.push(layer);
-            frameTimes.push(new Date(frame.time * 1000));
-          });
-
-          slider.max = radarLayers.length - 1;
-          slider.value = radarLayers.length - 1;
-          currentIndex = radarLayers.length - 1;
-          showFrame(currentIndex);
-        });
-    }
-
-    function showFrame(index) {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      currentLayer = radarLayers[index];
-      currentLayer.addTo(map);
-
-      const time = frameTimes[index];
-      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
-      slider.value = index;
-      currentIndex = index;
-    }
-
-    function playRadar() {
-      playInterval = setInterval(() => {
-        currentIndex = (currentIndex + 1) % radarLayers.length;
-        showFrame(currentIndex);
-      }, 600);
-    }
-
-    function pauseRadar() {
-      clearInterval(playInterval);
-      playInterval = null;
-    }
-
-    playPauseBtn.addEventListener('click', () => {
-      if (playInterval) {
-        pauseRadar();
-        playPauseBtn.textContent = "▶️ Play";
-      } else {
-        playRadar();
-        playPauseBtn.textContent = "⏸️ Pause";
-      }
-    });
-
-    slider.addEventListener('input', () => {
-      pauseRadar();
-      playPauseBtn.textContent = "▶️ Play";
-      showFrame(parseInt(slider.value));
-    });
-
-    loadRadar();
-    setInterval(loadRadar, 5 * 60 * 1000);
-
-    // Alerts
-    fetch('https://api.weather.gov/alerts/active')
-      .then(response => response.json())
-      .then(data => {
-        data.features.forEach(alert => {
-          const coords = alert.geometry?.coordinates;
-          const eventType = alert.properties.event;
-          let color = "orange";
-
-          if (eventType.includes("Tornado")) color = "red";
-          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
-          else if (eventType.includes("Flood")) color = "green";
-          else if (eventType.includes("Winter")) color = "purple";
-          else if (eventType.includes("Special Weather Statement")) color = "blue";
-
-          if (coords) {
-            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color,
-              fillOpacity: 0.3,
-              weight: 2
-            }).addTo(map);
-
-            poly.on('click', () => {
-              const content = `
-                <b>${alert.properties.event}</b><br>
-                <b>Area:</b> ${alert.properties.areaDesc}<br>
-                <b>Effective:</b> ${new Date(alert.properties.effective).toLocaleString()}<br>
-                <b>Expires:</b> ${new Date(alert.properties.expires).toLocaleString()}<br>
-                <b>Instructions:</b> ${alert.properties.instruction || 'N/A'}<br>
-                <b>Description:</b> ${alert.properties.description || 'N/A'}
-              `;
-              document.getElementById('warningContent').innerHTML = content;
-            });
-          }
-        });
-      });
-
-    // Make warning panel draggable
-    const warningPanel = document.getElementById('warningPanel');
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    warningPanel.addEventListener('mousedown', function(e) {
-      isDragging = true;
-      offsetX = e.clientX - warningPanel.offsetLeft;
-      offsetY = e.clientY - warningPanel.offsetTop;
-      warningPanel.style.cursor = 'grabbing';
-    });
-
-    document.addEventListener('mousemove', function(e) {
-      if (isDragging) {
-        warningPanel.style.left = (e.clientX - offsetX) + 'px';
-        warningPanel.style.top = (e.clientY - offsetY) + 'px';
-      }
-    });
-
-    document.addEventListener('mouseup', function() {
-      isDragging = false;
-      warningPanel.style.cursor = 'move';
-    });
-
-    // AI Summary Auto Update
-    let lastAlertTimestamp = 0;
-
-    function updateAISummary() {
-      const summaries = [
-        "Conditions are currently calm in most areas.",
-        "Isolated thunderstorms may develop in the afternoon.",
-        "Expect gusty winds near active cells.",
-        "Monitoring for possible severe weather in central regions.",
-        "Radar indicates scattered light showers.",
-        "No severe threats at this time. Stay alert for updates."
-      ];
-      let baseSummary = summaries[Math.floor(Math.random() * summaries.length)];
-
-      fetch('https://api.weather.gov/alerts/active')
-        .then(res => res.json())
-        .then(data => {
-          let latestTimestamp = lastAlertTimestamp;
-          let newAlertFound = false;
-          let importantAlerts = [];
-
-          data.features.forEach(alert => {
-            const issuedTime = new Date(alert.properties.sent).getTime();
-            if (issuedTime > lastAlertTimestamp) {
-              newAlertFound = true;
-              importantAlerts.push(alert.properties.event);
-              if (issuedTime > latestTimestamp) {
-                latestTimestamp = issuedTime;
-              }
-            }
-          });
-
-          lastAlertTimestamp = latestTimestamp;
-
-          if (newAlertFound) {
-            const uniqueAlerts = [...new Set(importantAlerts)];
-            const alertList = uniqueAlerts.slice(0, 3).join(", ");
-            baseSummary += `<br><b>⚠️ New Alerts:</b> ${alertList}`;
-          }
-
-          document.getElementById("aiSummary").innerHTML =
-            "<b>AI Weather Summary</b><br/>" + baseSummary;
-        })
-        .catch(() => {
-          document.getElementById("aiSummary").innerHTML =
-            "<b>AI Weather Summary</b><br/>" + baseSummary;
-        });
-    }
-
-    updateAISummary();
-    setInterval(updateAISummary, 5 * 60 * 1000);
-  </script>
-</body>
-</html>
-
 
 
