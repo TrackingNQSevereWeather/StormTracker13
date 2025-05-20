@@ -1,60 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>StormTracker 13 - Real Time Radar</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StormTracker 13 - TrackingNQSevereWeather Real Time Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
-    html, body { margin: 0; height: 100%; }
-    #map { width: 100%; height: 100%; }
-    .leaflet-control-layers { background: white; padding: 6px; }
-    button {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 5px;
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .leaflet-control-layers-expanded {
       font-size: 14px;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([39.5, -98.35], 4);
 
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    // Initialize map centered on USA
+    const map = L.map('map').setView([39.5, -98.35], 5);
+
+    // Add OpenStreetMap base layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 10,
-      attribution: ''
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const radarLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::N0B-900913/{z}/{x}/{y}.png', {
-      tileSize: 256,
-      opacity: 0.7
+    // Add RainViewer reflectivity radar
+    const reflectivity = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/0/{z}/{x}/{y}/5/1_1.png', {
+      opacity: 0.65,
+      attribution: 'Radar data © RainViewer',
+      errorTileUrl: ''
     });
 
-    const warningLayer = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/watch_warn-{z}/{x}/{y}.png', {
-      tileSize: 256,
-      opacity: 0.6
+    map.whenReady(() => {
+      reflectivity.addTo(map);
     });
-
-    const layers = {
-      "Reflectivity Radar": radarLayer,
-      "Severe Weather Warnings": warningLayer
-    };
-
-    L.control.layers(null, layers).addTo(map);
-    radarLayer.addTo(map);
-    warningLayer.addTo(map);
-
-    setInterval(() => {
-      radarLayer.setUrl(radarLayer._url + '?_=' + new Date().getTime());
-      warningLayer.setUrl(warningLayer._url + '?_=' + new Date().getTime());
-    }, 300000);
   </script>
 </body>
 </html>
