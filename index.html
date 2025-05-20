@@ -28,19 +28,6 @@
       gap: 12px;
     }
 
-    #dashboard {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.75);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      z-index: 999;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
     #slider {
       width: 300px;
     }
@@ -57,22 +44,63 @@
     #timestamp {
       min-width: 200px;
     }
+
+    /* 🔽 Legend styles */
+    #legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 999;
+    }
+
+    #legend button {
+      background: #444;
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <!-- Dashboard -->
-  <div id="dashboard">
-    <strong>Weather Control Centre</strong><br>
-    ⏰ Time: <span id="clock">--:--:--</span><br>
-    🚨 Active Alerts: <span id="alertCount">Loading...</span>
-  </div>
-
   <div id="controls">
     <button id="playPause">▶️ Play</button>
     <input type="range" id="slider" min="0" max="0" value="0"/>
     <div id="timestamp">Loading radar...</div>
+  </div>
+
+  <!-- ✅ Legend with collapse button -->
+  <div id="legend">
+    <button id="toggleLegend">Hide Legend</button>
+    <div id="legendContent">
+      <div class="legend-item"><div class="legend-color" style="background-color: red;"></div>Tornado Warning</div>
+      <div class="legend-item"><div class="legend-color" style="background-color: yellow;"></div>Severe Thunderstorm</div>
+      <div class="legend-item"><div class="legend-color" style="background-color: green;"></div>Flood Warning</div>
+      <div class="legend-item"><div class="legend-color" style="background-color: purple;"></div>Winter Storm</div>
+      <div class="legend-item"><div class="legend-color" style="background-color: blue;"></div>Special Marine</div>
+    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -163,36 +191,43 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // 🔶 NWS Alerts - Single Color
+    // 🔶 NWS Alerts - Multi-color as per earlier request
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
-        const alertCount = data.features.length;
-        document.getElementById("alertCount").textContent = alertCount;
-
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
+          const event = alert.properties.event;
+
+          let color = "orange"; // default fallback
+
+          if (event.includes("Tornado")) color = "red";
+          else if (event.includes("Thunderstorm")) color = "yellow";
+          else if (event.includes("Flood")) color = "green";
+          else if (event.includes("Winter")) color = "purple";
+          else if (event.includes("Marine")) color = "blue";
+
           if (coords) {
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: "orange",
+              color: color,
               fillOpacity: 0.3,
               weight: 2
-            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
+            }).bindPopup(`<b>${event}</b><br>${alert.properties.headline}`);
             poly.addTo(map);
           }
         });
       });
 
-    // 🕒 Live Clock
-    function updateClock() {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString();
-      document.getElementById("clock").textContent = timeStr;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+    // ✅ Toggle legend
+    const toggleBtn = document.getElementById('toggleLegend');
+    const legendContent = document.getElementById('legendContent');
+
+    toggleBtn.addEventListener('click', () => {
+      const isVisible = legendContent.style.display !== 'none';
+      legendContent.style.display = isVisible ? 'none' : 'block';
+      toggleBtn.textContent = isVisible ? 'Show Legend' : 'Hide Legend';
+    });
   </script>
 </body>
 </html>
-
 
