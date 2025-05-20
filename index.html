@@ -81,20 +81,24 @@
       font-size: 14px;
     }
 
-    #warningPanel {
+    #chatbox {
       position: absolute;
-      top: 70px;
+      bottom: 20px;
       left: 10px;
-      width: 250px;
-      max-height: 300px;
-      overflow-y: auto;
       background: rgba(0,0,0,0.85);
       color: white;
-      padding: 12px;
+      width: 300px;
       border-radius: 10px;
-      z-index: 1000;
-      font-size: 14px;
-      cursor: move;
+      padding: 10px;
+      z-index: 1001;
+    }
+
+    #chatbox input {
+      width: 100%;
+      padding: 6px;
+      margin-top: 6px;
+      border: none;
+      border-radius: 6px;
     }
   </style>
 </head>
@@ -115,9 +119,10 @@
     Watch for updates on severe weather alerts.
   </div>
 
-  <div id="warningPanel">
-    <b>Warning Details</b>
-    <div id="warningContent">No warning selected.</div>
+  <div id="chatbox">
+    <b>Storm Info Bot</b>
+    <div id="chatlog" style="margin-top: 8px; max-height: 120px; overflow-y: auto; font-size: 13px;"></div>
+    <input id="chatinput" placeholder="Ask about a storm..." />
   </div>
 
   <div id="controls">
@@ -215,6 +220,7 @@
     setInterval(loadRadar, 5 * 60 * 1000);
 
     // Alerts
+    let activeAlerts = [];
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -234,47 +240,35 @@
               color,
               fillOpacity: 0.3,
               weight: 2
-            }).addTo(map);
-
-            poly.on('click', () => {
-              const content = `
-                <b>${alert.properties.event}</b><br>
-                <b>Area:</b> ${alert.properties.areaDesc}<br>
-                <b>Effective:</b> ${new Date(alert.properties.effective).toLocaleString()}<br>
-                <b>Expires:</b> ${new Date(alert.properties.expires).toLocaleString()}<br>
-                <b>Instructions:</b> ${alert.properties.instruction || 'N/A'}<br>
-                <b>Description:</b> ${alert.properties.description || 'N/A'}
-              `;
-              document.getElementById('warningContent').innerHTML = content;
-            });
+            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
+            poly.addTo(map);
           }
+
+          activeAlerts.push({ event: alert.properties.event.toLowerCase(), details: alert.properties.description });
         });
       });
 
-    // Make warning panel draggable
-    const warningPanel = document.getElementById('warningPanel');
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
+    // Chatbox interaction
+    const chatInput = document.getElementById('chatinput');
+    const chatLog = document.getElementById('chatlog');
 
-    warningPanel.addEventListener('mousedown', function(e) {
-      isDragging = true;
-      offsetX = e.clientX - warningPanel.offsetLeft;
-      offsetY = e.clientY - warningPanel.offsetTop;
-      warningPanel.style.cursor = 'grabbing';
-    });
+    chatInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        const question = chatInput.value.trim().toLowerCase();
+        if (!question) return;
+        chatLog.innerHTML += `<div><b>You:</b> ${question}</div>`;
 
-    document.addEventListener('mousemove', function(e) {
-      if (isDragging) {
-        warningPanel.style.left = (e.clientX - offsetX) + 'px';
-        warningPanel.style.top = (e.clientY - offsetY) + 'px';
+        const found = activeAlerts.find(alert => question.includes(alert.event));
+        if (found) {
+          chatLog.innerHTML += `<div><b>Storm Info Bot:</b> ${found.details}</div>`;
+        } else {
+          chatLog.innerHTML += `<div><b>Storm Info Bot:</b> Sorry, I couldn’t find any info on that storm.</div>`;
+        }
+        chatInput.value = "";
+        chatLog.scrollTop = chatLog.scrollHeight;
       }
-    });
-
-    document.addEventListener('mouseup', function() {
-      isDragging = false;
-      warningPanel.style.cursor = 'move';
     });
   </script>
 </body>
 </html>
+
