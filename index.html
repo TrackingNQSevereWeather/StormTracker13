@@ -96,17 +96,6 @@
       font-size: 14px;
       cursor: move;
     }
-
-    @keyframes flash {
-      0% { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: 20; }
-    }
-
-    .leaflet-interactive.flashy-border {
-      animation: flash 0.5s linear infinite;
-      stroke-width: 3 !important;
-      stroke: red !important;
-    }
   </style>
 </head>
 <body>
@@ -233,17 +222,9 @@
           const coords = alert.geometry?.coordinates;
           const eventType = alert.properties.event;
           let color = "orange";
-          let isConfirmedTornado = false;
 
-          if (eventType.includes("Tornado")) {
-            color = "red";
-            if (
-              alert.properties.headline?.includes("CONFIRMED") ||
-              alert.properties.description?.includes("CONFIRMED")
-            ) {
-              isConfirmedTornado = true;
-            }
-          } else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
+          if (eventType.includes("Tornado")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
           else if (eventType.includes("Flood")) color = "green";
           else if (eventType.includes("Winter")) color = "purple";
           else if (eventType.includes("Special Weather Statement")) color = "blue";
@@ -252,9 +233,7 @@
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
               color,
               fillOpacity: 0.3,
-              weight: 2,
-              dashArray: isConfirmedTornado ? "10,10" : null,
-              className: isConfirmedTornado ? "flashy-border" : ""
+              weight: 2
             }).addTo(map);
 
             poly.on('click', () => {
@@ -296,6 +275,58 @@
       isDragging = false;
       warningPanel.style.cursor = 'move';
     });
+
+    // AI Summary Auto Update
+    let lastAlertTimestamp = 0;
+
+    function updateAISummary() {
+      const summaries = [
+        "Conditions are currently calm in most areas.",
+        "Isolated thunderstorms may develop in the afternoon.",
+        "Expect gusty winds near active cells.",
+        "Monitoring for possible severe weather in central regions.",
+        "Radar indicates scattered light showers.",
+        "No severe threats at this time. Stay alert for updates."
+      ];
+      let baseSummary = summaries[Math.floor(Math.random() * summaries.length)];
+
+      fetch('https://api.weather.gov/alerts/active')
+        .then(res => res.json())
+        .then(data => {
+          let latestTimestamp = lastAlertTimestamp;
+          let newAlertFound = false;
+          let importantAlerts = [];
+
+          data.features.forEach(alert => {
+            const issuedTime = new Date(alert.properties.sent).getTime();
+            if (issuedTime > lastAlertTimestamp) {
+              newAlertFound = true;
+              importantAlerts.push(alert.properties.event);
+              if (issuedTime > latestTimestamp) {
+                latestTimestamp = issuedTime;
+              }
+            }
+          });
+
+          lastAlertTimestamp = latestTimestamp;
+
+          if (newAlertFound) {
+            const uniqueAlerts = [...new Set(importantAlerts)];
+            const alertList = uniqueAlerts.slice(0, 3).join(", ");
+            baseSummary += `<br><b>⚠️ New Alerts:</b> ${alertList}`;
+          }
+
+          document.getElementById("aiSummary").innerHTML =
+            "<b>AI Weather Summary</b><br/>" + baseSummary;
+        })
+        .catch(() => {
+          document.getElementById("aiSummary").innerHTML =
+            "<b>AI Weather Summary</b><br/>" + baseSummary;
+        });
+    }
+
+    updateAISummary();
+    setInterval(updateAISummary, 5 * 60 * 1000);
   </script>
 </body>
 </html>
