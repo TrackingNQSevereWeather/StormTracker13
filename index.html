@@ -3,346 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
-      font-family: sans-serif;
-    }
-
-    #controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      z-index: 999;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    #slider {
-      width: 300px;
-    }
-
-    #playPause {
-      background: #444;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #timestamp {
-      min-width: 200px;
-    }
-
-    #legend {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
-      z-index: 1000;
-    }
-
-    #legend div {
-      margin-bottom: 5px;
-    }
-
-    .color-box {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-right: 6px;
-      vertical-align: middle;
-    }
-
-    #aiSummary {
-      position: absolute;
-      bottom: 100px;
-      right: 10px;
-      width: 250px;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      z-index: 1000;
-      font-size: 14px;
-    }
-
-    #warningPanel {
-      position: absolute;
-      top: 70px;
-      left: 10px;
-      width: 250px;
-      max-height: 300px;
-      overflow-y: auto;
-      background: rgba(0,0,0,0.85);
-      color: white;
-      padding: 12px;
-      border-radius: 10px;
-      z-index: 1000;
-      font-size: 14px;
-      cursor: move;
-    }
-  </style>
+  <title>Weather Radar with NOAA Streams</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <div id="map"></div>
 
-  <div id="legend">
-    <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
-    <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
-    <div><span class="color-box" style="background:green"></span> Flood Warning</div>
-    <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
-    <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
-  </div>
+  <!-- Your existing radar and weather panels would be here -->
 
-  <div id="aiSummary">
-    <b>AI Weather Summary</b><br/>
-    Conditions are currently calm in most areas.<br/>
-    Watch for updates on severe weather alerts.
-  </div>
+  <!-- NOAA Weather Radio Streams Section -->
+  <section id="nwr-streams">
+    <h2>NOAA Weather Radio Streams</h2>
 
-  <div id="warningPanel">
-    <b>Warning Details</b>
-    <div id="warningContent">No warning selected.</div>
-  </div>
+    <!-- Oklahoma -->
+    <div class="nwr-station">
+      <h3>WXK85 - Oklahoma City, OK</h3>
+      <p>Frequency: 162.400 MHz</p>
+      <audio controls>
+        <source src="https://www.broadcastify.com/listen/feed/32127" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-  <div id="controls">
-    <button id="playPause">▶️ Play</button>
-    <input type="range" id="slider" min="0" max="0" value="0"/>
-    <div id="timestamp">Loading radar...</div>
-  </div>
+    <!-- Texas -->
+    <div class="nwr-station">
+      <h3>WXK27 - Austin, TX</h3>
+      <p>Frequency: 162.400 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([39.5, -98.35], 5);
+    <div class="nwr-station">
+      <h3>KEC56 - Dallas, TX</h3>
+      <p>Frequency: 162.400 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB',
-      maxZoom: 18
-    }).addTo(map);
+    <div class="nwr-station">
+      <h3>KEC55 - Fort Worth, TX</h3>
+      <p>Frequency: 162.550 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-    const slider = document.getElementById('slider');
-    const timestampEl = document.getElementById('timestamp');
-    const playPauseBtn = document.getElementById('playPause');
+    <!-- Iowa -->
+    <div class="nwr-station">
+      <h3>KZZ80 - Milford, IA</h3>
+      <p>Frequency: 162.550 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-    let radarLayers = [];
-    let frameTimes = [];
-    let currentLayer = null;
-    let playInterval = null;
-    let currentIndex = 0;
-    let stormCorePositions = [];
+    <div class="nwr-station">
+      <h3>WXL62 - Sioux City, IA</h3>
+      <p>Frequency: 162.475 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-    function detectStormCore(layer, callback) {
-      const tileUrl = layer._url.replace('{z}', map.getZoom())
-                                .replace('{x}', 0)
-                                .replace('{y}', 0);
+    <div class="nwr-station">
+      <h3>WXL90 - Des Moines, IA</h3>
+      <p>Frequency: 162.550 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-      fetch(tileUrl)
-        .then(res => res.blob())
-        .then(blob => createImageBitmap(blob))
-        .then(imageBitmap => {
-          const canvas = document.createElement('canvas');
-          canvas.width = imageBitmap.width;
-          canvas.height = imageBitmap.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(imageBitmap, 0, 0);
+    <!-- Illinois -->
+    <div class="nwr-station">
+      <h3>WXJ76 - Champaign, IL</h3>
+      <p>Frequency: 162.550 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          let max = 0, maxIndex = 0;
+    <div class="nwr-station">
+      <h3>KZZ66 - Galesburg, IL</h3>
+      <p>Frequency: 162.400 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-          for (let i = 0; i < imageData.data.length; i += 4) {
-            const brightness = imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2];
-            if (brightness > max) {
-              max = brightness;
-              maxIndex = i;
-            }
-          }
+    <div class="nwr-station">
+      <h3>KZZ58 - Kankakee, IL</h3>
+      <p>Frequency: 162.525 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-          const pixelX = (maxIndex / 4) % canvas.width;
-          const pixelY = Math.floor((maxIndex / 4) / canvas.width);
+    <div class="nwr-station">
+      <h3>WXM49 - Marion, IL</h3>
+      <p>Frequency: 162.425 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-          const tileSize = 512;
-          const tileBounds = map.getPixelBounds();
-          const tileX = Math.floor(tileBounds.min.x / tileSize);
-          const tileY = Math.floor(tileBounds.min.y / tileSize);
-          const zoom = map.getZoom();
+    <div class="nwr-station">
+      <h3>WXJ71 - Peoria, IL</h3>
+      <p>Frequency: 162.475 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-          const latLng = map.unproject([
-            (tileX * tileSize) + pixelX,
-            (tileY * tileSize) + pixelY
-          ], zoom);
+    <div class="nwr-station">
+      <h3>WXJ73 - Quad Cities, IL</h3>
+      <p>Frequency: 162.550 MHz</p>
+      <audio controls>
+        <source src="https://noaaweatherradio.org/" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
 
-          callback(latLng);
-        });
-    }
+  </section>
 
-    function loadRadar() {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      radarLayers = [];
-      frameTimes = [];
-
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(res => res.json())
-        .then(data => {
-          const frames = data.radar.past.concat(data.radar.nowcast || []);
-          frames.forEach(frame => {
-            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
-            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
-            radarLayers.push(layer);
-            frameTimes.push(new Date(frame.time * 1000));
-          });
-
-          slider.max = radarLayers.length - 1;
-          slider.value = radarLayers.length - 1;
-          currentIndex = radarLayers.length - 1;
-          showFrame(currentIndex);
-        });
-    }
-
-    function showFrame(index) {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-
-      currentLayer = radarLayers[index];
-      currentLayer.addTo(map);
-
-      const time = frameTimes[index];
-      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
-      slider.value = index;
-      currentIndex = index;
-
-      detectStormCore(currentLayer, (latLng) => {
-        stormCorePositions.push(latLng);
-
-        L.circleMarker(latLng, {
-          radius: 6,
-          color: 'red',
-          fillColor: 'yellow',
-          fillOpacity: 0.8
-        }).addTo(map).bindTooltip("Storm Core", {permanent: false});
-
-        if (stormCorePositions.length > 1) {
-          const from = stormCorePositions[stormCorePositions.length - 2];
-          const to = stormCorePositions[stormCorePositions.length - 1];
-
-          L.polyline([from, to], {
-            color: 'lime',
-            weight: 2,
-            dashArray: '4'
-          }).addTo(map);
-        }
-      });
-    }
-
-    function playRadar() {
-      stormCorePositions = [];
-      playInterval = setInterval(() => {
-        currentIndex = (currentIndex + 1) % radarLayers.length;
-        showFrame(currentIndex);
-      }, 600);
-    }
-
-    function pauseRadar() {
-      clearInterval(playInterval);
-      playInterval = null;
-    }
-
-    playPauseBtn.addEventListener('click', () => {
-      if (playInterval) {
-        pauseRadar();
-        playPauseBtn.textContent = "▶️ Play";
-      } else {
-        playRadar();
-        playPauseBtn.textContent = "⏸️ Pause";
-      }
-    });
-
-    slider.addEventListener('input', () => {
-      pauseRadar();
-      playPauseBtn.textContent = "▶️ Play";
-      showFrame(parseInt(slider.value));
-    });
-
-    loadRadar();
-    setInterval(loadRadar, 5 * 60 * 1000);
-
-    fetch('https://api.weather.gov/alerts/active')
-      .then(response => response.json())
-      .then(data => {
-        data.features.forEach(alert => {
-          const coords = alert.geometry?.coordinates;
-          const eventType = alert.properties.event;
-          let color = "orange";
-
-          if (eventType.includes("Tornado")) color = "red";
-          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
-          else if (eventType.includes("Flood")) color = "green";
-          else if (eventType.includes("Winter")) color = "purple";
-          else if (eventType.includes("Special Weather Statement")) color = "blue";
-
-          if (coords) {
-            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color,
-              fillOpacity: 0.3,
-              weight: 2
-            }).addTo(map);
-
-            poly.on('click', () => {
-              const content = `
-                <b>${alert.properties.event}</b><br>
-                <b>Area:</b> ${alert.properties.areaDesc}<br>
-                <b>Effective:</b> ${new Date(alert.properties.effective).toLocaleString()}<br>
-                <b>Expires:</b> ${new Date(alert.properties.expires).toLocaleString()}<br>
-                <b>Instructions:</b> ${alert.properties.instruction || 'N/A'}<br>
-                <b>Description:</b> ${alert.properties.description || 'N/A'}
-              `;
-              document.getElementById('warningContent').innerHTML = content;
-            });
-          }
-        });
-      });
-
-    const warningPanel = document.getElementById('warningPanel');
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    warningPanel.addEventListener('mousedown', function(e) {
-      isDragging = true;
-      offsetX = e.clientX - warningPanel.offsetLeft;
-      offsetY = e.clientY - warningPanel.offsetTop;
-      warningPanel.style.cursor = 'grabbing';
-    });
-
-    document.addEventListener('mousemove', function(e) {
-      if (isDragging) {
-        warningPanel.style.left = (e.clientX - offsetX) + 'px';
-        warningPanel.style.top = (e.clientY - offsetY) + 'px';
-      }
-    });
-
-    document.addEventListener('mouseup', function() {
-      isDragging = false;
-      warningPanel.style.cursor = 'move';
-    });
-  </script>
 </body>
 </html>
+
 
