@@ -2,71 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StormTracker 13 TrackingNQSevereWeather Real Time Radar</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StormTracker 13 - Real Time Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
     }
+
+    #timestamp {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
+  <div id="timestamp">Loading radar...</div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
   <script>
     const map = L.map('map').setView([39.5, -98.35], 5); // Center USA
 
-    // Base map
-    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Base map layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // 🌧️ Reflectivity Radar Animation (RainViewer)
-    let radarFrames = [];
-    let radarLayer = null;
-    let frameIndex = 0;
+    const radarLayers = [];
+    let currentFrame = 0;
     let animationInterval;
+    const timestampEl = document.getElementById('timestamp');
 
-    function startRadarAnimation() {
-      if (animationInterval) clearInterval(animationInterval);
-
-      animationInterval = setInterval(() => {
-        if (radarLayer) map.removeLayer(radarLayer);
-        radarLayer = L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${radarFrames[frameIndex].path}/256/{z}/{x}/{y}/2/1_1.png`, {
-          opacity: 0.6,
-          attribution: 'Radar © RainViewer'
-        }).addTo(map);
-
-        frameIndex = (frameIndex + 1) % radarFrames.length;
-      }, 500);
-    }
-
-    fetch('https://tilecache.rainviewer.com/api/maps.json')
+    // Load RainViewer radar frames
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
       .then(res => res.json())
-      .then(frames => {
-        radarFrames = frames.slice(-10); // Last 10 frames
-        startRadarAnimation();
+      .then(data => {
+        const frames = data.radar.past.concat(data.radar.nowcast || []);
+        frames.forEach(frame => {
+          const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+          const layer = L.tileLayer(tileUrl, {
+            opacity: 0.6
+          });
+          radarLayers.push({ layer, time: frame.time });
+        });
+
+        startAnimation();
       });
 
-    // ⚡️ Lightning (example only)
-    const lightning = L.circle([38, -97], {
-      radius: 50000,
-      color: 'yellow',
-      fillColor: 'yellow',
-      fillOpacity: 0.7
-    }).bindPopup("⚡️ Lightning Strike Example");
+    function startAnimation() {
+      if (radarLayers.length === 0) return;
 
-    // 🛰 Satellite
-    const satellite = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
-      attribution: "Esri World Imagery"
-    });
+      animationInterval = setInterval(() => {
+        if (radarLayers[currentFrame - 1]) {
+          map.removeLayer(radarLayers[currentFrame - 1].layer);
+        }
 
-    // 🌀 NWS Alerts
+        map.addLayer(radarLayers[currentFrame].layer);
+
+        const time = new Date(radarLayers[currentFrame].time * 1000);
+        timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
+
+        currentFrame = (currentFrame + 1) % radarLayers.length;
+      }, 600);
+    }
+
+    // Load active NWS alerts
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -75,7 +86,8 @@
           if (coords) {
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
               color: getAlertColor(alert.properties.event),
-              fillOpacity: 0.4
+              fillOpacity: 0.3,
+              weight: 2
             }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
             poly.addTo(map);
           }
@@ -91,13 +103,6 @@
       if (e.includes("wind")) return "purple";
       return "orange";
     }
-
-    // Optional layers control
-    const overlays = {
-      "Satellite (Static)": satellite,
-      "Lightning (Example)": lightning
-    };
-    L.control.layers(null, overlays).addTo(map);
   </script>
 </body>
 </html>
