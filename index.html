@@ -26,13 +26,13 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // ✅ FIXED Reflectivity Radar (Iowa State)
-    const radar = L.tileLayer('https://mesonet.agron.iastate.edu/tiles/nexrad-n0q/{z}/{x}/{y}.png', {
+    // ✅ RainViewer Reflectivity Radar (Reliable & CORS-safe)
+    const radar = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/nowcast/0/256/{z}/{x}/{y}/2/1_1.png', {
       opacity: 0.6,
-      attribution: 'Radar © Iowa State Univ. IEM'
+      attribution: 'Radar © RainViewer'
     }).addTo(map);
 
-    // ⚡️ Lightning overlay (optional — demo only, no live data)
+    // ⚡️ Lightning overlay (demo only)
     const lightning = L.circle([38, -97], {
       radius: 50000,
       color: 'yellow',
@@ -40,7 +40,7 @@
       fillOpacity: 0.7
     }).bindPopup("⚡️ Lightning Strike Example");
 
-    // 🛰 Satellite (GOES — demo, static)
+    // 🛰 Satellite (Static Imagery)
     const satellite = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
       attribution: "Esri World Imagery"
     });
@@ -71,7 +71,7 @@
       return "orange";
     }
 
-    // Add optional overlays
+    // Add overlays to layer control
     const overlays = {
       "Reflectivity Radar": radar,
       "Satellite (Static)": satellite,
