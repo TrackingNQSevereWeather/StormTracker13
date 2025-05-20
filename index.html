@@ -80,6 +80,37 @@
       z-index: 1000;
       font-size: 14px;
     }
+
+    #warningPanel {
+      position: absolute;
+      top: 80px;
+      right: 10px;
+      width: 280px;
+      max-height: 50%;
+      overflow-y: auto;
+      background: rgba(255,255,255,0.95);
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      z-index: 1001;
+      font-size: 14px;
+    }
+
+    .warning-box {
+      border-left: 6px solid gray;
+      padding-left: 10px;
+      margin-bottom: 10px;
+    }
+    .warning-box.red { border-color: red; animation: flash 1s infinite; }
+    .warning-box.yellow { border-color: yellow; }
+    .warning-box.green { border-color: green; }
+    .warning-box.purple { border-color: purple; }
+    .warning-box.blue { border-color: blue; }
+
+    @keyframes flash {
+      0%, 100% { background-color: rgba(255,0,0,0.1); }
+      50% { background-color: rgba(255,0,0,0.4); }
+    }
   </style>
 </head>
 <body>
@@ -98,6 +129,8 @@
     Conditions are currently calm in most areas.<br/>
     Watch for updates on severe weather alerts.
   </div>
+
+  <div id="warningPanel"></div>
 
   <div id="controls">
     <button id="playPause">▶️ Play</button>
@@ -197,39 +230,35 @@
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
+        const warningPanel = document.getElementById('warningPanel');
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
           const eventType = alert.properties.event;
-          let color = "orange";
+          const headline = alert.properties.headline;
 
-          if (eventType.includes("Tornado")) color = "red";
-          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
-          else if (eventType.includes("Flood")) color = "green";
-          else if (eventType.includes("Winter")) color = "purple";
-          else if (eventType.includes("Special Weather Statement")) color = "blue";
+          let colorClass = "gray";
+          if (eventType.includes("Tornado")) colorClass = "red";
+          else if (eventType.includes("Severe Thunderstorm")) colorClass = "yellow";
+          else if (eventType.includes("Flood")) colorClass = "green";
+          else if (eventType.includes("Winter")) colorClass = "purple";
+          else if (eventType.includes("Special Weather Statement")) colorClass = "blue";
 
           if (coords) {
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color,
+              color: colorClass,
               fillOpacity: 0.3,
               weight: 2
-            }).bindPopup(`
-              <b>${eventType}</b><br>
-              <strong>Headline:</strong> ${alert.properties.headline || "N/A"}<br>
-              <strong>Severity:</strong> ${alert.properties.severity || "Unknown"}<br>
-              <strong>Urgency:</strong> ${alert.properties.urgency || "Unknown"}<br>
-              <strong>Certainty:</strong> ${alert.properties.certainty || "Unknown"}<br>
-              <strong>Effective:</strong> ${new Date(alert.properties.effective).toLocaleString()}<br>
-              <strong>Expires:</strong> ${new Date(alert.properties.expires).toLocaleString()}<br><br>
-              <strong>Details:</strong><br>
-              ${alert.properties.description || "No details available."}
-            `);
+            });
             poly.addTo(map);
+
+            const box = document.createElement('div');
+            box.className = `warning-box ${colorClass}`;
+            box.innerHTML = `<b>${eventType}</b><br>${headline}`;
+            warningPanel.appendChild(box);
           }
         });
       });
   </script>
 </body>
 </html>
-
 
