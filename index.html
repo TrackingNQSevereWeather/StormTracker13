@@ -10,76 +10,58 @@
       height: 100%;
       margin: 0;
       font-family: sans-serif;
-      background-color: #f0f2f5;
-    }
-
-    #map {
-      position: absolute;
-      top: 60px;
-      left: 300px;
-      right: 0;
-      bottom: 80px;
-      z-index: 1;
-    }
-
-    header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 60px;
-      background-color: #1e1e2f;
-      color: white;
       display: flex;
-      align-items: center;
-      padding: 0 20px;
-      font-size: 18px;
-      font-weight: bold;
-      z-index: 1001;
+      flex-direction: column;
+    }
+
+    #header {
+      background: #222;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 20px;
+    }
+
+    #container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
     }
 
     #sidebar {
-      position: absolute;
-      top: 60px;
-      left: 0;
-      width: 300px;
-      bottom: 0;
-      background: #252537;
+      width: 250px;
+      background: #333;
       color: white;
       padding: 15px;
-      z-index: 1001;
+      box-sizing: border-box;
       overflow-y: auto;
     }
 
-    #aiSummary {
-      background: rgba(255,255,255,0.1);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
-      margin-bottom: 20px;
+    #main {
+      flex: 1;
+      position: relative;
     }
 
-    #warningPanel {
-      background: rgba(255,255,255,0.1);
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 14px;
+    #map {
+      height: 100%;
+      width: 100%;
+      position: absolute;
     }
 
     #controls {
       position: absolute;
-      bottom: 0;
-      left: 300px;
-      right: 0;
-      height: 80px;
-      background: #1e1e2f;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
       color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      z-index: 999;
+      text-align: center;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 12px;
-      z-index: 1001;
-      padding: 10px 20px;
     }
 
     #slider {
@@ -95,15 +77,15 @@
       cursor: pointer;
     }
 
+    #timestamp {
+      min-width: 200px;
+    }
+
     #legend {
-      position: absolute;
-      top: 70px;
-      right: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 10px;
       border-radius: 8px;
       font-size: 14px;
-      z-index: 1000;
     }
 
     #legend div {
@@ -118,31 +100,104 @@
       vertical-align: middle;
     }
 
-    .flashing-border {
-      animation: flash-border 1s infinite alternate;
+    #aiSummary {
+      margin-top: 20px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
     }
 
-    @keyframes flash-border {
-      from { border: 3px solid red; }
-      to { border: 3px solid yellow; }
+    #warningPanel {
+      margin-top: 20px;
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .flashing-border {
+      animation: flash 1s infinite;
+    }
+
+    @keyframes flash {
+      0% { border: 3px solid red; }
+      50% { border: 3px solid yellow; }
+      100% { border: 3px solid red; }
     }
   </style>
 </head>
 <body>
-  <header>🌩️ StormTracker13 | TrackingNQSevereWeather Real-Time Radar</header>
-
-  <div id="sidebar">
-    <div id="aiSummary">
-      <b>AI Weather Summary</b><br/>
-      Conditions are currently calm in most areas.<br/>
-      Watch for updates on severe weather alerts.
+  <div id="header">StormTracker13 - TrackingNQSevereWeather Real Time Radar</div>
+  <div id="container">
+    <div id="sidebar">
+      <div id="legend">
+        <div><span class="color-box" style="background:red"></span> Tornado Warning</div>
+        <div><span class="color-box" style="background:yellow"></span> Severe Thunderstorm Warning</div>
+        <div><span class="color-box" style="background:green"></span> Flood Warning</div>
+        <div><span class="color-box" style="background:purple"></span> Winter Weather</div>
+        <div><span class="color-box" style="background:blue"></span> Special Weather Statement</div>
+      </div>
+      <div id="aiSummary">
+        <b>AI Weather Summary</b><br/>
+        Conditions are currently calm in most areas.<br/>
+        Watch for updates on severe weather alerts.
+      </div>
+      <div id="warningPanel">
+        <b>Warning Details</b>
+        <div id="warningContent">No warning selected.</div>
+      </div>
     </div>
-    <div id="warningPanel">
-      <b>Warning Details</b>
-      <div id="warningContent">No warning selected.</div>
+    <div id="main">
+      <div id="map"></div>
+      <div id="controls">
+        <button id="playPause">▶️ Play</button>
+        <input type="range" id="slider" min="0" max="0" value="0"/>
+        <div id="timestamp">Loading radar...</div>
+      </div>
     </div>
   </div>
 
-  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([39.5, -98.35], 5);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap & CartoDB',
+      maxZoom: 18
+    }).addTo(map);
+
+    const slider = document.getElementById('slider');
+    const timestampEl = document.getElementById('timestamp');
+    const playPauseBtn = document.getElementById('playPause');
+
+    let radarLayers = [];
+    let frameTimes = [];
+    let currentLayer = null;
+    let playInterval = null;
+    let currentIndex = 0;
+
+    function loadRadar() {
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      radarLayers = [];
+      frameTimes = [];
+
+      fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(res => res.json())
+        .then(data => {
+          const frames = data.radar.past.concat(data.radar.nowcast || []);
+          frames.forEach(frame => {
+            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
+            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
+            radarLayers.push(layer);
+            frameTimes.push(new Date(frame.time * 1000));
+          });
+
+          slider.max = radarLayers.length - 1;
+          slider.value = radar
 
 
