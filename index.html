@@ -2,156 +2,92 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StormTracker 13 - US Radar Dashboard</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StormTracker 13 - Real-Time USA Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
-      font-family: sans-serif;
+      padding: 0;
     }
 
     #controls {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 12px;
-      z-index: 999;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    #slider {
-      width: 300px;
-    }
-
-    #playPause {
-      background: #444;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #timestamp {
-      min-width: 200px;
+      z-index: 1000;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 8px;
+      border-radius: 8px;
+      font-family: sans-serif;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
-
   <div id="controls">
-    <button id="playPause">▶️ Play</button>
-    <input type="range" id="slider" min="0" max="0" value="0"/>
-    <div id="timestamp">Loading radar...</div>
+    <button onclick="toggleAnimation()">⏯️ Play / Pause Radar</button>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const map = L.map('map').setView([39.5, -98.35], 5);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CartoDB',
-      maxZoom: 18
+  <script>
+    const map = L.map('map').setView([39.5, -98.35], 5); // USA center
+
+    // 🗺️ Base map layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const slider = document.getElementById('slider');
-    const timestampEl = document.getElementById('timestamp');
-    const playPauseBtn = document.getElementById('playPause');
-
+    // 🌧️ RainViewer radar animation
     let radarLayers = [];
-    let frameTimes = [];
-    let currentLayer = null;
-    let playInterval = null;
-    let currentIndex = 0;
+    let currentFrame = 0;
+    let animationInterval;
+    let isPlaying = true;
 
-    function loadRadar() {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      radarLayers = [];
-      frameTimes = [];
-
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(res => res.json())
-        .then(data => {
-          const frames = data.radar.past.concat(data.radar.nowcast || []);
-          frames.forEach(frame => {
-            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
-            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
-            radarLayers.push(layer);
-            frameTimes.push(new Date(frame.time * 1000));
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(res => res.json())
+      .then(data => {
+        const frames = data.radar.past;
+        frames.forEach((frame, i) => {
+          const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+          const layer = L.tileLayer(tileUrl, {
+            opacity: i === frames.length - 1 ? 0.6 : 0,
+            zIndex: 100
           });
-
-          slider.max = radarLayers.length - 1;
-          slider.value = radarLayers.length - 1;
-          currentIndex = radarLayers.length - 1;
-          showFrame(currentIndex);
+          radarLayers.push(layer);
+          layer.addTo(map);
         });
+        currentFrame = radarLayers.length - 1;
+        animationInterval = setInterval(showNextFrame, 1000);
+      });
+
+    function showNextFrame() {
+      radarLayers[currentFrame].setOpacity(0);
+      currentFrame = (currentFrame + 1) % radarLayers.length;
+      radarLayers[currentFrame].setOpacity(0.6);
     }
 
-    function showFrame(index) {
-      if (currentLayer) {
-        map.removeLayer(currentLayer);
-      }
-      currentLayer = radarLayers[index];
-      currentLayer.addTo(map);
-
-      const time = frameTimes[index];
-      timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
-      slider.value = index;
-      currentIndex = index;
-    }
-
-    function playRadar() {
-      playInterval = setInterval(() => {
-        currentIndex = (currentIndex + 1) % radarLayers.length;
-        showFrame(currentIndex);
-      }, 600);
-    }
-
-    function pauseRadar() {
-      clearInterval(playInterval);
-      playInterval = null;
-    }
-
-    playPauseBtn.addEventListener('click', () => {
-      if (playInterval) {
-        pauseRadar();
-        playPauseBtn.textContent = "▶️ Play";
+    function toggleAnimation() {
+      if (isPlaying) {
+        clearInterval(animationInterval);
       } else {
-        playRadar();
-        playPauseBtn.textContent = "⏸️ Pause";
+        animationInterval = setInterval(showNextFrame, 1000);
       }
-    });
+      isPlaying = !isPlaying;
+    }
 
-    slider.addEventListener('input', () => {
-      pauseRadar();
-      playPauseBtn.textContent = "▶️ Play";
-      showFrame(parseInt(slider.value));
-    });
-
-    loadRadar();
-    setInterval(loadRadar, 5 * 60 * 1000);
-
-    // 🔶 NWS Alerts - Single Color
+    // ⚠️ NWS Alerts (Color-coded)
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
-          if (coords) {
+          if (coords && coords.length > 0) {
             const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-              color: "orange",
+              color: getAlertColor(alert.properties.event),
               fillOpacity: 0.3,
               weight: 2
             }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
@@ -159,6 +95,15 @@
           }
         });
       });
+
+    // 🎨 Custom color logic
+    function getAlertColor(event) {
+      const e = event.toLowerCase();
+      if (e.includes("tornado")) return "red";
+      if (e.includes("severe thunderstorm")) return "orange";
+      if (e.includes("special weather statement")) return "blue";
+      return "#4B0082"; // dark purple default
+    }
   </script>
 </body>
 </html>
