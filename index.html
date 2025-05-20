@@ -18,21 +18,48 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <script>
-    const map = L.map('map').setView([39.5, -98.35], 5); // Center on USA
+    const map = L.map('map').setView([39.5, -98.35], 5); // Center USA
 
-    // Base map
+    // Base layer
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // ✅ RainViewer Reflectivity Radar (Reliable & CORS-safe)
-    const radar = L.tileLayer('https://tilecache.rainviewer.com/v2/radar/nowcast/0/256/{z}/{x}/{y}/2/1_1.png', {
-      opacity: 0.6,
-      attribution: 'Radar © RainViewer'
-    }).addTo(map);
+    // 🌧️ Reflectivity Radar Animation (RainViewer)
+    let radarFrames = [];
+    let radarLayer = null;
+    let frameIndex = 0;
+    let animationInterval;
 
-    // ⚡️ Lightning overlay (demo only)
+    function startRadarAnimation() {
+      if (animationInterval) clearInterval(animationInterval);
+
+      animationInterval = setInterval(() => {
+        if (radarLayer) map.removeLayer(radarLayer);
+        radarLayer = L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${radarFrames[frameIndex].path}/256/{z}/{x}/{y}/2/1_1.png`, {
+          opacity: 0.6,
+          attribution: 'Radar © RainViewer'
+        }).addTo(map);
+
+        frameIndex = (frameIndex + 1) % radarFrames.length;
+      }, 500);
+    }
+
+    fetch('https://tilecache.rainviewer.com/api/maps.json')
+      .then(res => res.json())
+      .then(frames => {
+        radarFrames = frames.slice(-10); // last 10 frames
+        startRadarAnimation();
+      });
+
+    // 💨 Velocity Radar (IEM)
+    const velocityRadar = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0u-900913/{z}/{x}/{y}.png', {
+      opacity: 0.6,
+      attribution: 'Velocity Radar © Iowa State Univ. IEM'
+    });
+
+    // ⚡️ Lightning (example circle)
     const lightning = L.circle([38, -97], {
       radius: 50000,
       color: 'yellow',
@@ -40,12 +67,12 @@
       fillOpacity: 0.7
     }).bindPopup("⚡️ Lightning Strike Example");
 
-    // 🛰 Satellite (Static Imagery)
+    // 🛰 Satellite
     const satellite = L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{x}/{y}', {
       attribution: "Esri World Imagery"
     });
 
-    // 🌪 NWS Alerts (USA)
+    // 🌀 NWS Alerts
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -71,9 +98,10 @@
       return "orange";
     }
 
-    // Add overlays to layer control
+    // Layer controls
     const overlays = {
-      "Reflectivity Radar": radar,
+      "Reflectivity Radar (Animated)": radarLayer,
+      "Velocity Radar (IEM)": velocityRadar,
       "Satellite (Static)": satellite,
       "Lightning (Example)": lightning
     };
@@ -81,3 +109,4 @@
   </script>
 </body>
 </html>
+
