@@ -45,26 +45,61 @@
       min-width: 200px;
     }
 
-    #aiSummary {
+    #ai-summary {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      z-index: 1000;
+      font-size: 14px;
+      max-width: 250px;
+    }
+
+    #legend {
+      position: absolute;
+      top: 20px;
+      right: 20px;
       background: rgba(0, 0, 0, 0.7);
       color: white;
       padding: 10px 15px;
-      border-radius: 10px;
-      max-width: 300px;
+      border-radius: 8px;
       font-size: 14px;
       z-index: 1000;
+    }
+
+    .legend-item {
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+    }
+
+    .legend-color {
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+      border-radius: 3px;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div id="aiSummary">
-    <b>AI Weather Summary:</b>
-    <div id="summaryText">Analyzing current radar data...</div>
+  <div id="ai-summary">
+    <strong>AI Weather Summary:</strong><br>
+    Scanning radar data...<br>
+    Thunderstorm activity possible in some areas.
+  </div>
+
+  <div id="legend">
+    <strong>Legend</strong><br>
+    <div class="legend-item"><div class="legend-color" style="background:red;"></div> Tornado Warning</div>
+    <div class="legend-item"><div class="legend-color" style="background:yellow;"></div> Severe Thunderstorm Warning</div>
+    <div class="legend-item"><div class="legend-color" style="background:green;"></div> Flood Warning</div>
+    <div class="legend-item"><div class="legend-color" style="background:purple;"></div> Winter Weather</div>
+    <div class="legend-item"><div class="legend-color" style="background:blue;"></div> Special Weather Statement</div>
   </div>
 
   <div id="controls">
@@ -128,9 +163,6 @@
       timestampEl.textContent = `Radar time: ${time.toLocaleString()}`;
       slider.value = index;
       currentIndex = index;
-
-      // Update AI summary
-      document.getElementById('summaryText').textContent = `Current radar showing activity as of ${time.toLocaleTimeString()}.`;
     }
 
     function playRadar() {
@@ -163,6 +195,32 @@
 
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
+
+    // NWS Alerts - Full Warning Color System
+    fetch('https://api.weather.gov/alerts/active')
+      .then(response => response.json())
+      .then(data => {
+        data.features.forEach(alert => {
+          const coords = alert.geometry?.coordinates;
+          const eventType = alert.properties.event;
+          let color = "orange"; // default
+
+          if (eventType.includes("Tornado")) color = "red";
+          else if (eventType.includes("Severe Thunderstorm")) color = "yellow";
+          else if (eventType.includes("Flood")) color = "green";
+          else if (eventType.includes("Winter")) color = "purple";
+          else if (eventType.includes("Special Weather Statement")) color = "blue";
+
+          if (coords) {
+            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
+              color,
+              fillOpacity: 0.3,
+              weight: 2
+            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
+            poly.addTo(map);
+          }
+        });
+      });
   </script>
 </body>
 </html>
