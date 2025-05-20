@@ -2,72 +2,145 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StormTracker 13 TrackingNQSevereWeather Real Time Radar</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-timedimension/dist/leaflet.timedimension.control.min.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-timedimension/dist/leaflet.timedimension.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StormTracker 13 | TrackingNQSevereWeather Real Time Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     html, body, #map {
       height: 100%;
       margin: 0;
       padding: 0;
     }
+
+    .leaflet-control-layers-expanded {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .slider-container {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.8);
+      padding: 5px 10px;
+      border-radius: 10px;
+    }
+
+    .slider-container input {
+      width: 300px;
+    }
+
+    @media (max-width: 600px) {
+      .slider-container input {
+        width: 200px;
+      }
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div class="slider-container">
+    <input type="range" id="timeSlider" min="0" max="5" step="1" value="0">
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script>
-    const map = L.map("map", {
-      center: [39.8283, -98.5795], // Centered on USA
-      zoom: 5,
-      timeDimension: true,
-      timeDimensionControl: true,
-      timeDimensionOptions: {
-        timeInterval: "PT3H/PT0H",
-        period: "PT5M"
+    const map = L.map("map").setView([39.5, -98.35], 4);
+
+    // Base Map
+    const base = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    // Radar Reflectivity (Iowa State)
+    let radarFrames = [];
+    for (let i = 0; i <= 5; i++) {
+      radarFrames.push(
+        L.tileLayer(`https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-{timestamp}/{z}/{x}/{y}.png`, {
+          attribution: "Radar &copy; Iowa State",
+          transparent: true
+        })
+      );
+    }
+
+    // Update with real timestamps
+    const timestamps = [];
+    const now = new Date();
+    for (let i = 0; i <= 5; i++) {
+      const time = new Date(now.getTime() - i * 5 * 60000); // 5 min steps
+      const str = time.toISOString().replace(/[-:]/g, "").slice(0, 12);
+      timestamps.unshift(str);
+    }
+
+    radarFrames = timestamps.map(ts =>
+      L.tileLayer(`https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-${ts}/{z}/{x}/{y}.png`, {
+        transparent: true,
+        attribution: "Iowa State Radar"
+      })
+    );
+
+    let currentRadar = radarFrames[radarFrames.length - 1].addTo(map);
+
+    document.getElementById("timeSlider").addEventListener("input", function () {
+      map.removeLayer(currentRadar);
+      currentRadar = radarFrames[this.value];
+      currentRadar.addTo(map);
+    });
+
+    // Satellite layer (GOES via NOAA)
+    const satellite = L.tileLayer('https://cdn.star.nesdis.noaa.gov/GOES16/ABI/CONUS/GEOCOLOR/{z}/{x}/{y}.jpg', {
+      attribution: 'Satellite &copy; NOAA',
+      maxZoom: 7
+    });
+
+    // Warnings (NWS GeoJSON feed)
+    const warnings = L.geoJSON(null, {
+      style: feature => ({
+        color: 'red',
+        weight: 2,
+        fillOpacity: 0.3
+      }),
+      onEachFeature: (feature, layer) => {
+        const props = feature.properties;
+        layer.bindPopup(`<strong>${props.event}</strong><br>${props.headline || ''}`);
       }
     });
 
-    const baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    fetch("https://api.weather.gov/alerts/active?status=actual&message_type=alert")
+      .then(res => res.json())
+      .then(data => warnings.addData(data.features));
 
-    const radarLayer = L.tileLayer("https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png", {
-      opacity: 0.6,
-      attribution: "Radar © Iowa State Univ. IEM"
-    });
-
-    const satelliteLayer = L.tileLayer("https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes-vis-900913/{z}/{x}/{y}.png", {
-      opacity: 0.6,
-      attribution: "Satellite © Iowa State Univ. IEM"
-    });
-
-    const lightningLayer = L.tileLayer("https://www.lightningmaps.org/staticmap/lightningmap-{z}/{x}/{y}.png", {
-      opacity: 0.7,
-      attribution: "Lightning © Blitzortung.org"
-    });
+    map.addLayer(warnings);
 
     const overlays = {
-      "Radar": radarLayer,
-      "Satellite": satelliteLayer,
-      "Lightning": lightningLayer
+      "Radar Reflectivity": currentRadar,
+      "Satellite": satellite,
+      "NWS Warnings": warnings
     };
 
-    L.control.layers(null, overlays).addTo(map);
-    radarLayer.addTo(map);
+    L.control.layers({ "Base Map": base }, overlays).addTo(map);
 
-    // Auto-refresh layers every 5 minutes
+    // Auto-refresh radar every 5 minutes
     setInterval(() => {
-      const timestamp = new Date().getTime();
-      radarLayer.setUrl(radarLayer._url + "?_=" + timestamp);
-      satelliteLayer.setUrl(satelliteLayer._url + "?_=" + timestamp);
-      lightningLayer.setUrl(lightningLayer._url + "?_=" + timestamp);
-    }, 300000);
+      const newTimestamps = [];
+      const newNow = new Date();
+      for (let i = 0; i <= 5; i++) {
+        const t = new Date(newNow.getTime() - i * 5 * 60000);
+        newTimestamps.unshift(t.toISOString().replace(/[-:]/g, "").slice(0, 12));
+      }
+
+      radarFrames = newTimestamps.map(ts =>
+        L.tileLayer(`https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-${ts}/{z}/{x}/{y}.png`, {
+          transparent: true
+        })
+      );
+
+      document.getElementById("timeSlider").max = radarFrames.length - 1;
+      map.removeLayer(currentRadar);
+      currentRadar = radarFrames[radarFrames.length - 1].addTo(map);
+    }, 300000); // 5 minutes
   </script>
 </body>
 </html>
-
-
