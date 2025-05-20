@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StormTracker 13 - Real Time Radar</title>
+  <title>StormTracker 13 - Enhanced Radar</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     html, body, #map {
@@ -41,9 +41,9 @@
   <script>
     const map = L.map('map').setView([39.5, -98.35], 5);
 
-    // Base map
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    // Dark base map for better contrast
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap & CartoDB',
       maxZoom: 18
     }).addTo(map);
 
@@ -55,7 +55,6 @@
     let currentLayer = null;
 
     function loadRadar() {
-      // Remove any existing radar layers
       if (currentLayer) {
         map.removeLayer(currentLayer);
       }
@@ -67,8 +66,9 @@
         .then(data => {
           const frames = data.radar.past.concat(data.radar.nowcast || []);
           frames.forEach(frame => {
-            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
-            const layer = L.tileLayer(tileUrl, { opacity: 0.6 });
+            // Use high resolution radar tiles (512) and boost opacity
+            const tileUrl = `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/2/1_1.png`;
+            const layer = L.tileLayer(tileUrl, { opacity: 0.8 });
             radarLayers.push(layer);
             frameTimes.push(new Date(frame.time * 1000));
           });
@@ -94,7 +94,7 @@
       showFrame(parseInt(slider.value));
     });
 
-    // Load radar initially
+    // Initial load
     loadRadar();
 
     // Auto-refresh every 5 minutes
