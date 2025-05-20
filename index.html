@@ -4,13 +4,12 @@
   <title>StormTracker 13 | TrackingNQSevereWeather Real Time Radar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-timedimension/dist/leaflet.timedimension.control.min.css" />
   <style>
-    #map {
-      width: 100%;
-      height: 100vh;
-    }
-    .leaflet-control-layers {
-      font-size: 14px;
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
     }
   </style>
 </head>
@@ -19,9 +18,9 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-timedimension/dist/leaflet.timedimension.min.js"></script>
-  <script src="https://unpkg.com/leaflet-velocity/dist/leaflet-velocity.min.js"></script>
 
   <script>
+    // Create map with time slider and dark mode
     const map = L.map("map", {
       center: [39.5, -98.35], // Center USA
       zoom: 5,
@@ -33,78 +32,68 @@
       }
     });
 
-    // Base layer
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors"
+    // Dark mode basemap (CartoDB)
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://carto.com/">CartoDB</a>',
+      subdomains: "abcd",
+      maxZoom: 19
     }).addTo(map);
 
-    // Radar layer (Reflectivity from Iowa State)
+    // Radar Reflectivity Layer (Iowa State N0Q)
     const radarLayer = L.tileLayer("https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::N0Q::USCOMP/{z}/{x}/{y}.png", {
       attribution: "Iowa State Mesonet",
       transparent: true
     }).addTo(map);
 
-    // Satellite placeholder
-    const satelliteLayer = L.tileLayer("https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes16-vis-usa/{z}/{x}/{y}.png", {
-      attribution: "Satellite via Iowa State",
-      transparent: true
-    });
-
-    // Simulated lightning layer
-    const lightningLayer = L.tileLayer("https://tile.openweathermap.org/map/lightning_new/{z}/{x}/{y}.png?appid=YOUR_API_KEY", {
-      attribution: "Lightning data © OpenWeather",
-      transparent: true
-    });
-
-    // Weather Warnings from NWS
+    // Load NWS Warnings
     async function loadWarnings() {
-      const res = await fetch("https://api.weather.gov/alerts/active");
-      const data = await res.json();
+      try {
+        const res = await fetch("https://api.weather.gov/alerts/active");
+        const data = await res.json();
 
-      const warningsLayer = L.geoJSON(data, {
-        style: (feature) => {
-          const type = feature.properties.event;
-          let color = "#FF0000";
-          if (type.includes("Tornado")) color = "#FF0000";
-          else if (type.includes("Severe Thunderstorm")) color = "#FFA500";
-          else if (type.includes("Flash Flood")) color = "#006400";
-          else if (type.includes("Flood")) color = "#00FF00";
-          else if (type.includes("Marine")) color = "#800080";
-          else if (type.includes("Winter Storm")) color = "#1E90FF";
-          else if (type.includes("Hurricane")) color = "#8B0000";
+        const warningsLayer = L.geoJSON(data, {
+          style: (feature) => {
+            const type = feature.properties.event;
+            let color = "#FF0000";
+            if (type.includes("Tornado")) color = "#FF0000";
+            else if (type.includes("Severe Thunderstorm")) color = "#FFA500";
+            else if (type.includes("Flash Flood")) color = "#008000";
+            else if (type.includes("Flood")) color = "#00FF00";
+            else if (type.includes("Winter Storm")) color = "#1E90FF";
+            else if (type.includes("Hurricane")) color = "#800000";
+            else if (type.includes("Marine")) color = "#9370DB";
 
-          return {
-            color: color,
-            weight: 2,
-            fillOpacity: 0.3
-          };
-        },
-        onEachFeature: (feature, layer) => {
-          layer.bindPopup(`<strong>${feature.properties.event}</strong><br>${feature.properties.headline}`);
-        }
-      });
+            return {
+              color: color,
+              weight: 2,
+              fillOpacity: 0.3
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            layer.bindPopup(`<strong>${feature.properties.event}</strong><br>${feature.properties.headline}`);
+          }
+        });
 
-      warningsLayer.addTo(map);
+        warningsLayer.addTo(map);
+
+        // Store for refresh
+        map._warningsLayer = warningsLayer;
+      } catch (e) {
+        console.error("Failed to load warnings", e);
+      }
     }
+
+    // Initial load
     loadWarnings();
 
-    // Layer control
-    const baseLayers = {
-      "OpenStreetMap": map
-    };
-
-    const overlays = {
-      "Radar (Reflectivity)": radarLayer,
-      "Satellite": satelliteLayer,
-      "Lightning": lightningLayer
-    };
-
-    L.control.layers(baseLayers, overlays).addTo(map);
-
-    // Auto-refresh radar layer every 5 minutes
+    // Auto-refresh every 5 minutes
     setInterval(() => {
       radarLayer.setUrl("https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::N0Q::USCOMP/{z}/{x}/{y}.png?" + new Date().getTime());
-      loadWarnings(); // refresh warnings too
+
+      if (map._warningsLayer) {
+        map.removeLayer(map._warningsLayer);
+      }
+      loadWarnings();
     }, 5 * 60 * 1000);
   </script>
 </body>
