@@ -1,153 +1,111 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>StormTracker 13 | TrackingNQSevereWeather Real Time Radar</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-timedimension/dist/leaflet.timedimension.control.min.css" />
+  <title>StormTracker 13 - TrackingNQSevereWeather Real Time Radar</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body, #map {
-      height: 100%;
+    body, html {
       margin: 0;
-      padding: 0;
-    }
-    .leaflet-top.leaflet-left {
-      z-index: 9999;
-    }
-    .button-container {
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 8px;
-    }
-    .button-container button {
-      display: block;
-      margin: 5px 0;
-      padding: 5px 10px;
+      height: 100%;
+      background-color: #111;
       color: white;
-      background-color: #333;
-      border: none;
-      cursor: pointer;
     }
-    .button-container button:hover {
-      background-color: #555;
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+    .leaflet-control-layers-expanded {
+      background-color: #333 !important;
+      color: white !important;
     }
   </style>
 </head>
 <body>
-<div id="map"></div>
-<audio id="tornadoSound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+  <div id="map"></div>
+  <audio id="tornadoSound" src="https://www.soundjay.com/transportation/sounds/siren-01a.mp3" preload="auto"></audio>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-timedimension/dist/leaflet.timedimension.min.js"></script>
-<script>
-  const map = L.map("map", {
-    center: [39.5, -98.35],
-    zoom: 5,
-    timeDimension: true,
-    timeDimensionControl: true,
-    timeDimensionOptions: {
-      timeInterval: "PT3H/PT0H",
-      period: "PT5M"
-    }
-  });
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-timedimension@1.1.0/dist/leaflet.timedimension.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-  // Dark mode map
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://carto.com/">CartoDB</a>',
-    subdomains: "abcd",
-    maxZoom: 19
-  }).addTo(map);
+  <script>
+    const map = L.map('map', {
+      center: [39.8283, -98.5795],
+      zoom: 5,
+      zoomControl: true,
+      timeDimension: true,
+      timeDimensionControl: true,
+      timeDimensionOptions: {
+        timeInterval: "PT6H/PT0H",
+        period: "PT5M"
+      },
+      timeDimensionControlOptions: {
+        autoPlay: false,
+        timeSliderDragUpdate: true,
+        loopButton: true,
+        minSpeed: 1,
+        maxSpeed: 15,
+        speedStep: 1,
+        timeZones: ["Local"]
+      }
+    });
 
-  // Radar Layer from IEM (working URL for USA radar)
-  const radar = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi", {
-    layers: "nexrad-n0r-wmst",
-    format: "image/png",
-    transparent: true,
-    attribution: "IEM Nexrad"
-  }).addTo(map);
+    const darkBase = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 19
+    }).addTo(map);
 
-  // Toggle buttons for radar
-  const buttonControl = L.control({ position: 'topright' });
-  buttonControl.onAdd = function () {
-    const div = L.DomUtil.create('div', 'button-container');
-    div.innerHTML = `
-      <button onclick="toggleRadar()">Toggle Radar</button>
-      <button onclick="toggleWarnings()">Toggle Warnings</button>
-    `;
-    return div;
-  };
-  buttonControl.addTo(map);
+    const radarLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi", {
+      layers: 'nexrad-n0r-wmst',
+      format: 'image/png',
+      transparent: true,
+      attribution: "Radar from Iowa State University"
+    });
 
-  let radarVisible = true;
-  function toggleRadar() {
-    if (radarVisible) {
-      map.removeLayer(radar);
-    } else {
-      radar.addTo(map);
-    }
-    radarVisible = !radarVisible;
-  }
+    const radarTimeLayer = L.timeDimension.layer.wms(radarLayer, {
+      updateTimeDimension: true,
+      requestTimeFromCapabilities: true,
+      wmsVersion: '1.1.1'
+    }).addTo(map);
 
-  let warningsLayer;
+    const warningsLayer = L.tileLayer.wms("https://mesonet.agron.iastate.edu/cgi-bin/wms/us/wwa.cgi", {
+      layers: 'warnings_c',
+      format: 'image/png',
+      transparent: true,
+      attribution: "IEM Warning Layer"
+    }).addTo(map);
 
-  async function loadWarnings() {
-    try {
-      const res = await fetch("https://api.weather.gov/alerts/active");
-      const data = await res.json();
-      let hasTornado = false;
+    const baseLayers = {
+      "Dark Mode": darkBase
+    };
 
-      if (warningsLayer) map.removeLayer(warningsLayer);
+    const overlayLayers = {
+      "Radar Reflectivity": radarTimeLayer,
+      "Weather Warnings": warningsLayer
+    };
 
-      warningsLayer = L.geoJSON(data, {
-        style: (feature) => {
-          const type = feature.properties.event;
-          let color = "#FF0000"; // Default red
+    L.control.layers(baseLayers, overlayLayers).addTo(map);
 
-          if (type.includes("Severe Thunderstorm")) color = "#FFA500";
-          else if (type.includes("Flash Flood")) color = "#008000";
-          else if (type.includes("Flood")) color = "#00FF00";
-          else if (type.includes("Winter Storm")) color = "#1E90FF";
-          else if (type.includes("Hurricane")) color = "#800000";
-          else if (type.includes("Marine")) color = "#9370DB";
-          else if (type.includes("Special Weather Statement")) color = "#3399FF";
-          else if (type.includes("Tornado")) {
-            color = "#FF0000";
-            hasTornado = true;
-          }
+    // Auto-refresh radar every 5 minutes
+    setInterval(() => {
+      radarTimeLayer._timeDimension.setCurrentTime(Date.now());
+    }, 300000);
 
-          return {
-            color: color,
-            weight: 2,
-            fillOpacity: 0.3
-          };
-        },
-        onEachFeature: (feature, layer) => {
-          layer.bindPopup(`<strong>${feature.properties.event}</strong><br>${feature.properties.headline}`);
+    // Tornado alert sound
+    function checkTornadoAlerts() {
+      $.get("https://mesonet.agron.iastate.edu/cgi-bin/geoserver/nws/watch_warn_warns.geojson", function (data) {
+        let tornadoWarning = data.features.some(feature => feature.properties.phenomena === "TO" && feature.properties.sig === "W");
+        if (tornadoWarning) {
+          document.getElementById("tornadoSound").play();
         }
       });
-
-      warningsLayer.addTo(map);
-      if (hasTornado) document.getElementById("tornadoSound").play();
-
-    } catch (err) {
-      console.error("Warning fetch error:", err);
     }
-  }
 
-  function toggleWarnings() {
-    if (map.hasLayer(warningsLayer)) {
-      map.removeLayer(warningsLayer);
-    } else {
-      warningsLayer.addTo(map);
-    }
-  }
-
-  loadWarnings();
-  setInterval(() => {
-    radar.setParams({ _: new Date().getTime() });
-    loadWarnings();
-  }, 300000); // Refresh every 5 mins
-</script>
+    setInterval(checkTornadoAlerts, 60000); // Check every minute
+  </script>
 </body>
 </html>
 
