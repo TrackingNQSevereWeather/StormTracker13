@@ -80,6 +80,31 @@
       z-index: 1000;
       font-size: 14px;
     }
+
+    #warningPanel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(30,30,30,0.95);
+      color: white;
+      padding: 20px;
+      font-size: 15px;
+      border-top: 2px solid #ff4444;
+      z-index: 2000;
+      display: none;
+    }
+
+    #warningContent {
+      max-width: 800px;
+      margin: auto;
+    }
+
+    #closeWarning {
+      float: right;
+      cursor: pointer;
+      font-size: 20px;
+    }
   </style>
 </head>
 <body>
@@ -97,6 +122,18 @@
     <b>AI Weather Summary</b><br/>
     Conditions are currently calm in most areas.<br/>
     Watch for updates on severe weather alerts.
+  </div>
+
+  <div id="warningPanel">
+    <div id="warningContent">
+      <span id="closeWarning" onclick="closeWarning()">✖</span>
+      <h3 id="eventTitle"></h3>
+      <p><strong>Affected Area:</strong> <span id="areaDesc"></span></p>
+      <p><strong>Hazard:</strong> <span id="hazardDesc"></span></p>
+      <p><strong>Source:</strong> <span id="sourceDesc"></span></p>
+      <p><strong>Expires:</strong> <span id="expiresDesc"></span></p>
+      <p><strong>Time Left:</strong> <span id="countdownTimer"></span></p>
+    </div>
   </div>
 
   <div id="controls">
@@ -193,7 +230,28 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // Alerts
+    function closeWarning() {
+      document.getElementById("warningPanel").style.display = "none";
+    }
+
+    function updateCountdown(expirationTime) {
+      const countdownEl = document.getElementById("countdownTimer");
+      const end = new Date(expirationTime);
+      function update() {
+        const now = new Date();
+        const diff = end - now;
+        if (diff <= 0) {
+          countdownEl.textContent = "Expired";
+          return;
+        }
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        countdownEl.textContent = `${mins}m ${secs}s`;
+        setTimeout(update, 1000);
+      }
+      update();
+    }
+
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -213,7 +271,15 @@
               color,
               fillOpacity: 0.3,
               weight: 2
-            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
+            }).on('click', () => {
+              document.getElementById("eventTitle").textContent = alert.properties.event;
+              document.getElementById("areaDesc").textContent = alert.properties.areaDesc || "Unknown";
+              document.getElementById("hazardDesc").textContent = alert.properties.description || "N/A";
+              document.getElementById("sourceDesc").textContent = alert.properties.sender || "Unknown";
+              document.getElementById("expiresDesc").textContent = alert.properties.expires || "Unknown";
+              document.getElementById("warningPanel").style.display = "block";
+              updateCountdown(alert.properties.expires);
+            });
             poly.addTo(map);
           }
         });
@@ -221,5 +287,4 @@
   </script>
 </body>
 </html>
-
 
