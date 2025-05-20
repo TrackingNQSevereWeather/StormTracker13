@@ -32,21 +32,6 @@
       font-size: 14px;
       z-index: 1000;
     }
-    .ai-button {
-      position: absolute;
-      bottom: 150px;
-      right: 10px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      padding: 8px 12px;
-      cursor: pointer;
-      z-index: 1000;
-    }
-    .ai-button:hover {
-      background-color: #0056b3;
-    }
   </style>
 </head>
 <body>
@@ -64,11 +49,9 @@
   <strong>AI Summary:</strong> No active analysis.
 </div>
 
-<button class="ai-button" onclick="runAIRadarBot()">AI Radar Bot ➤</button>
-
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([-20.1, 146.3], 7); // Example center
+  const map = L.map('map').setView([-20.1, 146.3], 7); // Center on NQ
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
@@ -98,37 +81,8 @@
   warnings.forEach(w => {
     const polygon = L.polygon(w.coords, { color: w.color }).addTo(map);
     polygon.bindPopup(`${w.type} Warning<br>Location: ${w.location}<br>Wind: ${w.wind}<br>Hail: ${w.hail}<br>Time: ${w.time}`);
-    w.polygon = polygon;
   });
-
-  function runAIRadarBot() {
-    const center = map.getCenter();
-    let closest = null;
-    let minDist = Infinity;
-
-    warnings.forEach(w => {
-      const latlng = L.latLngBounds(w.coords[0]).getCenter();
-      const dist = center.distanceTo(latlng);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = { ...w, center: latlng };
-      }
-    });
-
-    if (closest) {
-      map.setView(closest.center, 10);
-      document.getElementById('ai-summary').innerHTML = `
-        <strong>AI Summary:</strong><br>
-        ${closest.type} Warning for ${closest.location}.<br>
-        Wind: ${closest.wind}<br>
-        Hail: ${closest.hail}<br>
-        In effect ${closest.time}.
-      `;
-    }
-  }
 </script>
 
 </body>
 </html>
-
-
