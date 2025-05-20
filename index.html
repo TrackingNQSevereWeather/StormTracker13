@@ -45,47 +45,34 @@
       min-width: 200px;
     }
 
-    .legend {
+    #legend {
       position: absolute;
-      bottom: 100px;
+      bottom: 90px;
       left: 10px;
-      background: white;
+      background: rgba(0,0,0,0.7);
+      color: white;
       padding: 10px;
       border-radius: 8px;
-      font-size: 14px;
-      z-index: 1000;
-    }
-
-    .legend div {
-      margin-bottom: 4px;
-    }
-
-    .legend span {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      margin-right: 8px;
-      vertical-align: middle;
+      z-index: 999;
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
+  <div id="legend">
+    <strong>Legend</strong><br>
+    <div style="color: red;">⬤ Tornado Warning</div>
+    <div style="color: yellow;">⬤ Severe Thunderstorm Warning</div>
+    <div style="color: green;">⬤ Flood Warning</div>
+    <div style="color: purple;">⬤ Winter Weather</div>
+    <div style="color: blue;">⬤ Special Weather Statement</div>
+  </div>
+
   <div id="controls">
     <button id="playPause">▶️ Play</button>
     <input type="range" id="slider" min="0" max="0" value="0"/>
     <div id="timestamp">Loading radar...</div>
-  </div>
-
-  <div class="legend">
-    <div><span style="background:red;"></span> Tornado Warning</div>
-    <div><span style="background:pink;"></span> Tornado Watch</div>
-    <div><span style="background:yellow;"></span> Severe Thunderstorm Warning</div>
-    <div><span style="background:orange;"></span> Severe Thunderstorm Watch</div>
-    <div><span style="background:green;"></span> Flood Warning</div>
-    <div><span style="background:purple;"></span> Winter Weather</div>
-    <div><span style="background:blue;"></span> Special Weather Statement</div>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -182,30 +169,27 @@
       .then(data => {
         data.features.forEach(alert => {
           const coords = alert.geometry?.coordinates;
-          const eventType = alert.properties.event || "";
-
-          if (!coords || !Array.isArray(coords[0])) return;
-
-          let color = "orange";
+          const eventType = alert.properties.event;
+          let color = "orange"; // default
 
           if (eventType.includes("Tornado Warning")) color = "red";
-          else if (eventType.includes("Tornado Watch")) color = "pink";
           else if (eventType.includes("Severe Thunderstorm Warning")) color = "yellow";
-          else if (eventType.includes("Severe Thunderstorm Watch")) color = "orange";
           else if (eventType.includes("Flood")) color = "green";
           else if (eventType.includes("Winter")) color = "purple";
           else if (eventType.includes("Special Weather Statement")) color = "blue";
 
-          const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
-            color,
-            fillOpacity: 0.3,
-            weight: 2
-          }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
-          
-          poly.addTo(map);
+          if (coords) {
+            const poly = L.polygon(coords[0].map(pair => [pair[1], pair[0]]), {
+              color,
+              fillOpacity: 0.3,
+              weight: 2
+            }).bindPopup(`<b>${alert.properties.event}</b><br>${alert.properties.headline}`);
+            poly.addTo(map);
+          }
         });
       });
   </script>
 </body>
 </html>
+
 
