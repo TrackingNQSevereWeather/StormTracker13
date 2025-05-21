@@ -12,6 +12,29 @@
       font-family: sans-serif;
     }
 
+    #topBar {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      background-color: #222;
+      color: white;
+      text-align: center;
+      padding: 8px 0;
+      font-size: 15px;
+      z-index: 1001;
+    }
+
+    #topBar a {
+      color: #4fc3f7;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 0 10px;
+    }
+
+    #topBar a:hover {
+      text-decoration: underline;
+    }
+
     #controls {
       position: absolute;
       bottom: 20px;
@@ -47,7 +70,7 @@
 
     #legend {
       position: absolute;
-      top: 10px;
+      top: 50px;
       right: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 10px;
@@ -96,19 +119,14 @@
       font-size: 14px;
       cursor: move;
     }
-
-    #copyWarning {
-      margin-top: 10px;
-      background-color: #333;
-      color: white;
-      border: none;
-      padding: 6px 10px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
+  <div id="topBar">
+    🌩️ <a href="https://discord.gg/c3JfCKeZ7D" target="_blank">Join our Discord</a> |
+    🌐 <a href="https://sites.google.com/view/trackingnqsevereweather/home" target="_blank">Visit our Website</a>
+  </div>
+
   <div id="map"></div>
 
   <div id="legend">
@@ -128,7 +146,6 @@
   <div id="warningPanel">
     <b>Warning Details</b>
     <div id="warningContent">No warning selected.</div>
-    <button id="copyWarning">Copy</button>
   </div>
 
   <div id="controls">
@@ -285,16 +302,6 @@
     document.addEventListener('mouseup', function() {
       isDragging = false;
       warningPanel.style.cursor = 'move';
-    });
-
-    // Copy button logic
-    document.getElementById('copyWarning').addEventListener('click', function () {
-      const warningText = document.getElementById('warningContent').innerText;
-      navigator.clipboard.writeText(warningText).then(() => {
-        alert("Warning details copied to clipboard.");
-      }).catch(err => {
-        alert("Failed to copy warning: " + err);
-      });
     });
   </script>
 </body>
