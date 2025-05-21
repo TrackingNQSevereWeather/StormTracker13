@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>StormTracker13 TrackingNQSevereWeather Real Time Radar</title>
+  <link rel="icon" href="https://media.discordapp.net/attachments/1324578345098416139/1372853237576634378/ChatGPT_Image_May_11_2025_09_47_41_AM.png?format=webp&quality=lossless" type="image/png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     html, body, #map {
@@ -121,8 +122,7 @@
 
   <div id="aiSummary">
     <b>AI Weather Summary</b><br/>
-    Conditions are currently calm in most areas.<br/>
-    Watch for updates on severe weather alerts.
+    Loading...
   </div>
 
   <div id="warningPanel">
@@ -289,6 +289,60 @@
       const text = document.getElementById("warningContent").innerText;
       navigator.clipboard.writeText(text);
     });
+
+    // 🔁 AI Weather Summary Tip Bot with Emergency Override
+    const aiTips = [
+      "Radar updates every 5 minutes.",
+      "Check for alerts in your local area.",
+      "Reload if radar appears outdated.",
+      "Click a polygon to see storm details.",
+      "Stay indoors during severe storms.",
+      "Flooded roads? Turn around, don’t drown!",
+      "Use full-screen for better viewing."
+    ];
+    let tipIndex = 0;
+    let summaryIsLocked = false;
+
+    function rotateTips() {
+      if (!summaryIsLocked) {
+        const msg = `<b>AI Weather Summary</b><br/>${aiTips[tipIndex]}`;
+        document.getElementById("aiSummary").innerHTML = msg;
+        tipIndex = (tipIndex + 1) % aiTips.length;
+      }
+    }
+
+    setInterval(rotateTips, 10000); // Every 10 sec
+
+    function updateEmergencySummary() {
+      fetch('https://api.weather.gov/alerts/active')
+        .then(res => res.json())
+        .then(data => {
+          if (data.features.length > 0) {
+            for (const alert of data.features) {
+              const type = alert.properties.event;
+              if (type.includes("Tornado")) {
+                document.getElementById("aiSummary").innerHTML = "<b>AI Weather Summary</b><br/>🌀 Tornado Warning issued — Take shelter immediately.";
+                summaryIsLocked = true;
+                return;
+              } else if (type.includes("Severe Thunderstorm")) {
+                document.getElementById("aiSummary").innerHTML = "<b>AI Weather Summary</b><br/>⛈️ Severe Thunderstorm Warning active — Stay indoors.";
+                summaryIsLocked = true;
+                return;
+              } else if (type.includes("Flood")) {
+                document.getElementById("aiSummary").innerHTML = "<b>AI Weather Summary</b><br/>🌊 Flood Warning in effect — Avoid flooded areas.";
+                summaryIsLocked = true;
+                return;
+              }
+            }
+            summaryIsLocked = false;
+          } else {
+            summaryIsLocked = false;
+          }
+        });
+    }
+
+    updateEmergencySummary();
+    setInterval(updateEmergencySummary, 5 * 60 * 1000); // Every 5 min
   </script>
 </body>
 </html>
