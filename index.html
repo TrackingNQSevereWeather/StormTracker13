@@ -19,20 +19,9 @@
       background-color: #222;
       color: white;
       text-align: center;
-      padding: 8px 0;
-      font-size: 15px;
+      padding: 4px 0; /* Reduced padding */
+      font-size: 12px;  /* Smaller text */
       z-index: 1001;
-    }
-
-    #topBar a {
-      color: #4fc3f7;
-      text-decoration: none;
-      font-weight: bold;
-      margin: 0 10px;
-    }
-
-    #topBar a:hover {
-      text-decoration: underline;
     }
 
     #controls {
@@ -70,7 +59,7 @@
 
     #legend {
       position: absolute;
-      top: 50px;
+      top: 10px;
       right: 10px;
       background: rgba(255, 255, 255, 0.9);
       padding: 10px;
@@ -119,12 +108,22 @@
       font-size: 14px;
       cursor: move;
     }
+
+    #copyButton {
+      margin-top: 8px;
+      background-color: #555;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div id="topBar">
-    🌩️ <a href="https://discord.gg/c3JfCKeZ7D" target="_blank">Join our Discord</a> |
-    🌐 <a href="https://sites.google.com/view/trackingnqsevereweather/home" target="_blank">Visit our Website</a>
+    Join our Discord: <a href="https://discord.gg/c3JfCKeZ7D" target="_blank" style="color: #4fd1c5;">Click here</a> |
+    Visit our Website: <a href="https://sites.google.com/view/trackingnqsevereweather/home" target="_blank" style="color: #4fd1c5;">TrackingNQSevereWeather</a>
   </div>
 
   <div id="map"></div>
@@ -146,6 +145,7 @@
   <div id="warningPanel">
     <b>Warning Details</b>
     <div id="warningContent">No warning selected.</div>
+    <button id="copyButton">Copy</button>
   </div>
 
   <div id="controls">
@@ -242,7 +242,6 @@
     loadRadar();
     setInterval(loadRadar, 5 * 60 * 1000);
 
-    // Alerts
     fetch('https://api.weather.gov/alerts/active')
       .then(response => response.json())
       .then(data => {
@@ -279,7 +278,6 @@
         });
       });
 
-    // Make warning panel draggable
     const warningPanel = document.getElementById('warningPanel');
     let isDragging = false;
     let offsetX = 0;
@@ -302,6 +300,11 @@
     document.addEventListener('mouseup', function() {
       isDragging = false;
       warningPanel.style.cursor = 'move';
+    });
+
+    document.getElementById("copyButton").addEventListener("click", () => {
+      const text = document.getElementById("warningContent").innerText;
+      navigator.clipboard.writeText(text);
     });
   </script>
 </body>
